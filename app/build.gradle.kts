@@ -58,6 +58,12 @@ dependencies {
     // JSON processing
     implementation("com.google.code.gson:gson:2.10.1")
     
+    // Barcode scanning
+    implementation("com.google.android.gms:play-services-mlkit-barcode-scanning:18.3.0")
+    implementation("androidx.camera:camera-camera2:1.3.0")
+    implementation("androidx.camera:camera-lifecycle:1.3.0")
+    implementation("androidx.camera:camera-view:1.3.0")
+    
     // Testing dependencies
     testImplementation(libs.junit)
     testImplementation("org.mockito:mockito-core:5.2.0")

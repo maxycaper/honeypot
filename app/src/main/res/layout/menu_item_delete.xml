@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="wrap_content"
+    android:layout_height="match_parent"
+    android:paddingStart="8dp"
+    android:paddingEnd="8dp">
+
+    <ImageButton
+        android:id="@+id/btn_delete_gallery"
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        android:layout_gravity="center_vertical|end"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:contentDescription="Delete gallery"
+        android:src="@drawable/ic_delete"
+        android:tint="@color/white" />
+
+</FrameLayout> 

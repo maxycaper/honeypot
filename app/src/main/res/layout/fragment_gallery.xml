@@ -7,11 +7,25 @@
     android:background="@color/black"
     tools:context=".ui.gallery.GalleryFragment">
 
-    <!-- Neon purple header is removed, gallery name will be in toolbar -->
-    <View
-        android:id="@+id/gallery_content_area"
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/recyclerViewBarcodes"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
+        android:clipToPadding="false"
+        android:padding="8dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <TextView
+        android:id="@+id/emptyView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="No barcodes scanned yet"
+        android:textColor="#80FFFFFF"
+        android:textSize="16sp"
+        android:visibility="gone"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"

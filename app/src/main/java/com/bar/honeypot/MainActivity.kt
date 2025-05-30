@@ -123,6 +123,13 @@ class MainActivity : AppCompatActivity() {
             val newItem = menu.add(R.id.gallery_group, newItemId, Menu.NONE, galleryName)
             newItem.setIcon(R.drawable.ic_menu_gallery)
             newItem.isCheckable = true
+            
+            // Add delete icon to each gallery
+            newItem.setActionView(R.layout.menu_item_delete)
+            val deleteView = newItem.actionView
+            deleteView?.findViewById<View>(R.id.btn_delete_gallery)?.setOnClickListener {
+                showDeleteGalleryDialog(galleryName, navView, navController)
+            }
         }
         
         // Set navigation listener for all menu items
@@ -144,6 +151,81 @@ class MainActivity : AppCompatActivity() {
             binding.drawerLayout.closeDrawers()
             true
         }
+    }
+    
+    private fun showDeleteGalleryDialog(galleryName: String, navView: NavigationView, navController: NavController) {
+        // Create a custom dialog
+        val dialog = Dialog(this)
+        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
+        dialog.setContentView(R.layout.dialog_delete_gallery)
+        
+        // Make dialog background transparent to show rounded corners
+        dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+        
+        // Get references to dialog views
+        val titleTextView = dialog.findViewById<TextView>(R.id.dialog_title)
+        val messageTextView = dialog.findViewById<TextView>(R.id.dialog_message)
+        val cancelButton = dialog.findViewById<Button>(R.id.btn_cancel)
+        val deleteButton = dialog.findViewById<Button>(R.id.btn_delete)
+        
+        // Set dialog text
+        titleTextView.text = "Delete Gallery"
+        messageTextView.text = "Are you sure you want to delete the gallery '$galleryName'? This action cannot be undone."
+        
+        // Set click listeners
+        cancelButton.setOnClickListener {
+            dialog.dismiss()
+        }
+        
+        deleteButton.setOnClickListener {
+            deleteGallery(galleryName, navView, navController)
+            dialog.dismiss()
+        }
+        
+        dialog.show()
+    }
+    
+    private fun deleteGallery(galleryName: String, navView: NavigationView, navController: NavController) {
+        // Remove gallery from list
+        customGalleries.remove(galleryName)
+        
+        // Save updated galleries list
+        saveGalleries()
+        
+        // Delete associated barcodes
+        deleteGalleryBarcodes(galleryName)
+        
+        // Rebuild the navigation menu
+        rebuildNavigationMenu(navView, navController)
+        
+        // Navigate to home if we're in the deleted gallery
+        if (navController.currentDestination?.id == R.id.nav_gallery) {
+            val currentGalleryName = navController.currentBackStackEntry?.arguments?.getString("gallery_name")
+            if (currentGalleryName == galleryName) {
+                navController.navigate(R.id.nav_home)
+            }
+        }
+        
+        Toast.makeText(this, "Gallery '$galleryName' deleted", Toast.LENGTH_SHORT).show()
+    }
+    
+    private fun deleteGalleryBarcodes(galleryName: String) {
+        // Delete the associated barcodes from SharedPreferences
+        val editor = sharedPreferences.edit()
+        editor.remove("barcodes_$galleryName")
+        editor.apply()
+    }
+    
+    private fun rebuildNavigationMenu(navView: NavigationView, navController: NavController) {
+        // Clear the gallery group
+        val menu = navView.menu
+        menu.removeGroup(R.id.gallery_group)
+        
+        // Re-add the group
+        menu.addSubMenu(Menu.NONE, R.id.gallery_group, Menu.NONE, "")
+        
+        // Restore galleries to menu
+        restoreGalleriesToMenu(navView, navController)
     }
     
     private fun showAddGalleryDialog(navView: NavigationView, navController: NavController) {
