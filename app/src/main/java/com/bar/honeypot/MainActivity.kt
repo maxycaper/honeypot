@@ -44,13 +44,18 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        setSupportActionBar(binding.appBarMain.toolbar)
+        
+        // Force navigation icon to be white
+        val navigationIcon = androidx.appcompat.content.res.AppCompatResources.getDrawable(this, R.drawable.ic_neon_menu)
+        navigationIcon?.setTint(getColor(R.color.white))
+        binding.appBarMain.toolbar.navigationIcon = navigationIcon
+
         // Initialize SharedPreferences
         sharedPreferences = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         
         // Load saved galleries
         loadSavedGalleries()
-
-        setSupportActionBar(binding.appBarMain.toolbar)
 
         val drawerLayout: DrawerLayout = binding.drawerLayout
         val navView: NavigationView = binding.navView

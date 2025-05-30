@@ -55,10 +55,13 @@ class GalleryFragment : Fragment() {
             }
         }
 
+        // Set gallery name in the header
+        binding.galleryNameText.text = galleryName
+
         val textView: TextView = binding.textGallery
         galleryViewModel.text.observe(viewLifecycleOwner) {
-            // Use gallery name in the text
-            textView.text = "$galleryName\n$it"
+            // Just use the description text without repeating the gallery name
+            textView.text = it
         }
         
         // Set up the scanner FAB click listener

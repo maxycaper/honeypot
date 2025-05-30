@@ -19,7 +19,10 @@
         <item name="windowNoTitle">true</item>
     </style>
 
-    <style name="Theme.Honeypot.AppBarOverlay" parent="ThemeOverlay.AppCompat.Dark.ActionBar" />
+    <style name="Theme.Honeypot.AppBarOverlay" parent="ThemeOverlay.AppCompat.Dark.ActionBar">
+        <item name="colorControlNormal">@color/white</item>
+        <item name="android:textColorPrimary">@color/white</item>
+    </style>
 
     <style name="Theme.Honeypot.PopupOverlay" parent="ThemeOverlay.AppCompat.Light" />
     
