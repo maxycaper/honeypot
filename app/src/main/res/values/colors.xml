@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Neon color palette with pink/purple focus -->
+    <color name="neon_pink">#FF00FF</color>
+    <color name="neon_hot_pink">#FF1493</color>
+    <color name="neon_magenta">#FF00CC</color>
+    <color name="neon_purple">#BC13FE</color>
+    <color name="neon_violet">#9400D3</color>
+    <color name="neon_indigo">#8A2BE2</color>
+    <color name="neon_blue">#00FFFF</color>
+    <color name="neon_green">#39FF14</color>
+    <color name="neon_yellow">#FFFF00</color>
+    <color name="neon_orange">#FF9933</color>
+    
+    <!-- Original colors kept for backward compatibility -->
+    <color name="purple_200">#FFBB86FC</color>
+    <color name="purple_500">#FF6200EE</color>
+    <color name="purple_700">#FF3700B3</color>
+    <color name="teal_200">#FF03DAC5</color>
+    <color name="teal_700">#FF018786</color>
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+</resources>
