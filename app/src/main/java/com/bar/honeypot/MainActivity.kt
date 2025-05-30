@@ -28,6 +28,13 @@ import com.bar.honeypot.util.VersionHelper
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
+import androidx.core.view.GravityCompat
+import android.widget.Button
+import android.content.DialogInterface
+import android.graphics.Color
+import android.graphics.drawable.ColorDrawable
+import android.view.Window
+import android.app.Dialog
 
 class MainActivity : AppCompatActivity() {
 
@@ -66,6 +73,11 @@ class MainActivity : AppCompatActivity() {
         
         // Set up gallery management controls
         setupGalleryManagement(navView, navController)
+        
+        // Configure toolbar to open drawer when menu icon is clicked
+        binding.appBarMain.toolbar.setNavigationOnClickListener {
+            drawerLayout.openDrawer(GravityCompat.START)
+        }
         
         // Passing each menu ID as a set of Ids because each
         // menu should be considered as top level destinations.
@@ -135,32 +147,35 @@ class MainActivity : AppCompatActivity() {
     }
     
     private fun showAddGalleryDialog(navView: NavigationView, navController: NavController) {
-        // Create an EditText for the dialog
-        val input = EditText(this)
-        input.hint = "Enter gallery name"
+        // Create a custom dialog
+        val dialog = Dialog(this)
+        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
+        dialog.setContentView(R.layout.dialog_create_gallery)
         
-        // Configure the input layout
-        val layoutParams = LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.MATCH_PARENT,
-            LinearLayout.LayoutParams.WRAP_CONTENT
-        )
-        layoutParams.setMargins(50, 20, 50, 20)
-        input.layoutParams = layoutParams
+        // Make dialog background transparent to show rounded corners
+        dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
         
-        // Create and show the dialog
-        AlertDialog.Builder(this)
-            .setTitle("Create New Gallery")
-            .setView(input)
-            .setPositiveButton("Create") { _, _ ->
-                val galleryName = input.text.toString().trim()
-                if (galleryName.isNotEmpty()) {
-                    createNewGallery(galleryName, navView, navController)
-                } else {
-                    Toast.makeText(this, "Gallery name cannot be empty", Toast.LENGTH_SHORT).show()
-                }
+        // Get references to dialog views
+        val input = dialog.findViewById<EditText>(R.id.edit_gallery_name)
+        val cancelButton = dialog.findViewById<Button>(R.id.btn_cancel)
+        val createButton = dialog.findViewById<Button>(R.id.btn_create)
+        
+        // Set click listeners
+        cancelButton.setOnClickListener {
+            dialog.dismiss()
+        }
+        
+        createButton.setOnClickListener {
+            val galleryName = input.text.toString().trim()
+            if (galleryName.isNotEmpty()) {
+                createNewGallery(galleryName, navView, navController)
+                dialog.dismiss()
+            } else {
+                Toast.makeText(this, "Gallery name cannot be empty", Toast.LENGTH_SHORT).show()
             }
-            .setNegativeButton("Cancel", null)
-            .show()
+        }
+        
+        dialog.show()
     }
     
     private fun createNewGallery(galleryName: String, navView: NavigationView, navController: NavController) {

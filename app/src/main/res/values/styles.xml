@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Custom rounded dialog style -->
+    <style name="NeonRoundedDialog" parent="Theme.MaterialComponents.Dialog.Alert">
+        <item name="android:background">@drawable/rounded_dialog_background</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:textColorPrimary">@color/white</item>
+        <item name="colorAccent">@color/neon_purple</item>
+        
+        <!-- Title customization -->
+        <item name="materialAlertDialogTitleTextStyle">@style/NeonDialogTitle</item>
+        <item name="materialAlertDialogTitlePanelStyle">@style/NeonDialogTitlePanel</item>
+        <item name="android:windowTitleStyle">@style/NeonDialogTitle</item>
+        <item name="android:windowTitleBackgroundStyle">@style/NeonDialogTitleBackground</item>
+    </style>
+    
+    <!-- Title text style -->
+    <style name="NeonDialogTitle" parent="MaterialAlertDialog.MaterialComponents.Title.Text">
+        <item name="android:textColor">@color/neon_hot_pink</item>
+        <item name="android:textSize">20sp</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:textAlignment">center</item>
+        <item name="android:gravity">center</item>
+        <item name="android:layout_gravity">center</item>
+        <item name="android:fontFamily">@font/lora</item>
+        <item name="android:layout_marginBottom">16dp</item>
+    </style>
+    
+    <!-- Title panel with no divider -->
+    <style name="NeonDialogTitlePanel" parent="MaterialAlertDialog.MaterialComponents.Title.Panel">
+        <item name="android:background">@android:color/transparent</item>
+    </style>
+    
+    <!-- Title background (no line) -->
+    <style name="NeonDialogTitleBackground">
+        <item name="android:background">@android:color/transparent</item>
+    </style>
+
+    <!-- Custom oval button style -->
+    <style name="NeonOvalButton" parent="Widget.MaterialComponents.Button">
+        <item name="android:background">@drawable/oval_button_background</item>
+        <item name="android:textColor">@color/white</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:paddingStart">24dp</item>
+        <item name="android:paddingEnd">24dp</item>
+        <item name="android:paddingTop">8dp</item>
+        <item name="android:paddingBottom">8dp</item>
+    </style>
+</resources> 

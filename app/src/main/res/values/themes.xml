@@ -22,6 +22,8 @@
     <style name="Theme.Honeypot.AppBarOverlay" parent="ThemeOverlay.AppCompat.Dark.ActionBar">
         <item name="colorControlNormal">@color/white</item>
         <item name="android:textColorPrimary">@color/white</item>
+        <item name="android:textSize">20sp</item>
+        <item name="android:textStyle">bold</item>
     </style>
 
     <style name="Theme.Honeypot.PopupOverlay" parent="ThemeOverlay.AppCompat.Light" />

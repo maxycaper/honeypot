@@ -8,10 +8,9 @@ import android.provider.MediaStore
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.core.app.ActivityCompat
+import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
@@ -55,14 +54,8 @@ class GalleryFragment : Fragment() {
             }
         }
 
-        // Set gallery name in the header
-        binding.galleryNameText.text = galleryName
-
-        val textView: TextView = binding.textGallery
-        galleryViewModel.text.observe(viewLifecycleOwner) {
-            // Just use the description text without repeating the gallery name
-            textView.text = it
-        }
+        // Set the gallery name in the toolbar title
+        (activity as? AppCompatActivity)?.supportActionBar?.title = galleryName
         
         // Set up the scanner FAB click listener
         binding.fabScanner.setOnClickListener {
