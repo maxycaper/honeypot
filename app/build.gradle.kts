@@ -64,6 +64,9 @@ dependencies {
     implementation("androidx.camera:camera-lifecycle:1.3.0")
     implementation("androidx.camera:camera-view:1.3.0")
     
+    // Barcode generation
+    implementation("com.journeyapps:zxing-android-embedded:4.3.0")
+    
     // Testing dependencies
     testImplementation(libs.junit)
     testImplementation("org.mockito:mockito-core:5.2.0")

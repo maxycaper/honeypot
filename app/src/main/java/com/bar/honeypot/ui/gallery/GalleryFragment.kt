@@ -15,6 +15,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.Window
 import android.widget.Button
+import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
@@ -139,7 +140,9 @@ class GalleryFragment : Fragment() {
     }
     
     private fun setupRecyclerView() {
-        barcodeAdapter = BarcodeAdapter()
+        barcodeAdapter = BarcodeAdapter { barcode ->
+            showBarcodeDisplayDialog(barcode)
+        }
         binding.recyclerViewBarcodes.apply {
             layoutManager = LinearLayoutManager(context)
             adapter = barcodeAdapter
@@ -309,6 +312,72 @@ class GalleryFragment : Fragment() {
             }
             
             dialog.show()
+        }
+    }
+
+    private fun showBarcodeDisplayDialog(barcode: BarcodeData) {
+        context?.let { ctx ->
+            // Create a custom dialog
+            val dialog = Dialog(ctx)
+            dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
+            dialog.setContentView(R.layout.dialog_display_barcode)
+            
+            // Make dialog background transparent to show rounded corners
+            dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+            
+            // Set up dialog views
+            val titleTextView = dialog.findViewById<TextView>(R.id.dialog_title)
+            val valueTextView = dialog.findViewById<TextView>(R.id.barcode_value)
+            val formatTextView = dialog.findViewById<TextView>(R.id.barcode_format)
+            val barcodeImageView = dialog.findViewById<ImageView>(R.id.barcode_image)
+            val closeButton = dialog.findViewById<Button>(R.id.btn_close)
+            
+            // Set barcode information
+            titleTextView.text = "Barcode Display"
+            valueTextView.text = barcode.value
+            formatTextView.text = "Format: ${barcode.format}"
+            
+            // Generate and display the barcode
+            generateBarcodeImage(barcode.value, barcode.format, barcodeImageView)
+            
+            // Set button listener
+            closeButton.setOnClickListener {
+                dialog.dismiss()
+            }
+            
+            dialog.show()
+        }
+    }
+    
+    private fun generateBarcodeImage(barcodeValue: String, barcodeFormat: String, imageView: ImageView) {
+        try {
+            // Determine the barcode format to use
+            val format = when (barcodeFormat) {
+                "QR_CODE" -> com.google.zxing.BarcodeFormat.QR_CODE
+                "CODE_128" -> com.google.zxing.BarcodeFormat.CODE_128
+                "CODE_39" -> com.google.zxing.BarcodeFormat.CODE_39
+                "EAN_13" -> com.google.zxing.BarcodeFormat.EAN_13
+                "EAN_8" -> com.google.zxing.BarcodeFormat.EAN_8
+                "UPC_A" -> com.google.zxing.BarcodeFormat.UPC_A
+                "UPC_E" -> com.google.zxing.BarcodeFormat.UPC_E
+                "DATA_MATRIX" -> com.google.zxing.BarcodeFormat.DATA_MATRIX
+                "AZTEC" -> com.google.zxing.BarcodeFormat.AZTEC
+                "PDF417" -> com.google.zxing.BarcodeFormat.PDF_417
+                "CODABAR" -> com.google.zxing.BarcodeFormat.CODABAR
+                "ITF" -> com.google.zxing.BarcodeFormat.ITF
+                else -> com.google.zxing.BarcodeFormat.QR_CODE // Default to QR code
+            }
+            
+            // Create MultiFormatWriter to generate the barcode
+            val writer = com.journeyapps.barcodescanner.BarcodeEncoder()
+            val bitMatrix = writer.encode(barcodeValue, format, 512, 512)
+            val bitmap = writer.createBitmap(bitMatrix)
+            
+            // Set the bitmap to the ImageView
+            imageView.setImageBitmap(bitmap)
+        } catch (e: Exception) {
+            // If there's an error generating the barcode, show an error message
+            Toast.makeText(context, "Error generating barcode: ${e.message}", Toast.LENGTH_SHORT).show()
         }
     }
 
