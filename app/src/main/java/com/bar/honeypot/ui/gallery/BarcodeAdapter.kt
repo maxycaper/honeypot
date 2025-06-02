@@ -9,6 +9,7 @@ import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.bar.honeypot.R
 import com.bar.honeypot.model.BarcodeData
+import java.util.ArrayList
 
 class BarcodeAdapter : ListAdapter<BarcodeData, BarcodeAdapter.BarcodeViewHolder>(BarcodeDiffCallback()) {
 
@@ -21,6 +22,11 @@ class BarcodeAdapter : ListAdapter<BarcodeData, BarcodeAdapter.BarcodeViewHolder
     override fun onBindViewHolder(holder: BarcodeViewHolder, position: Int) {
         val barcode = getItem(position)
         holder.bind(barcode)
+    }
+    
+    override fun submitList(list: List<BarcodeData>?) {
+        // Create a copy of the list to ensure proper diffing
+        super.submitList(list?.let { ArrayList(it) })
     }
 
     class BarcodeViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {

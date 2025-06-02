@@ -34,6 +34,14 @@ class GalleryViewModel : ViewModel() {
         _barcodes.value = currentList
     }
     
+    fun deleteBarcode(position: Int) {
+        val currentList = _barcodes.value ?: return
+        if (position in 0 until currentList.size) {
+            currentList.removeAt(position)
+            _barcodes.value = currentList
+        }
+    }
+    
     fun saveBarcodes(saveCallback: (String) -> Unit) {
         val barcodesJson = Gson().toJson(_barcodes.value)
         saveCallback(barcodesJson)

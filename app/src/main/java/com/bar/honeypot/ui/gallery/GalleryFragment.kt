@@ -2,22 +2,34 @@ package com.bar.honeypot.ui.gallery
 
 import android.Manifest
 import android.app.Activity
+import android.app.Dialog
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.drawable.ColorDrawable
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.Window
+import android.widget.Button
+import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
+import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
+import com.bar.honeypot.R
 import com.bar.honeypot.databinding.FragmentGalleryBinding
+import com.bar.honeypot.model.BarcodeData
 import com.bar.honeypot.ui.scanner.BarcodeScannerActivity
+import com.google.android.material.snackbar.Snackbar
 
 class GalleryFragment : Fragment() {
 
@@ -48,9 +60,7 @@ class GalleryFragment : Fragment() {
             val barcodeFormat = data?.getStringExtra(BarcodeScannerActivity.BARCODE_FORMAT)
             
             if (barcodeValue != null && barcodeFormat != null) {
-                galleryViewModel.addBarcode(barcodeValue, barcodeFormat)
-                saveBarcodesToSharedPreferences()
-                Toast.makeText(context, "Barcode scanned: $barcodeValue", Toast.LENGTH_SHORT).show()
+                showBarcodeConfirmationDialog(barcodeValue, barcodeFormat)
             }
         }
     }
@@ -92,6 +102,42 @@ class GalleryFragment : Fragment() {
         return root
     }
     
+    private fun showBarcodeConfirmationDialog(barcodeValue: String, barcodeFormat: String) {
+        context?.let { ctx ->
+            // Create a custom dialog
+            val dialog = Dialog(ctx)
+            dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
+            dialog.setContentView(R.layout.dialog_barcode_confirmation)
+            
+            // Make dialog background transparent to show rounded corners
+            dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+            
+            // Set up dialog views
+            val valueTextView = dialog.findViewById<TextView>(R.id.barcode_value)
+            val formatTextView = dialog.findViewById<TextView>(R.id.barcode_format)
+            val cancelButton = dialog.findViewById<Button>(R.id.btn_cancel)
+            val saveButton = dialog.findViewById<Button>(R.id.btn_save)
+            
+            // Set barcode information
+            valueTextView.text = barcodeValue
+            formatTextView.text = "Format: $barcodeFormat"
+            
+            // Set button listeners
+            cancelButton.setOnClickListener {
+                dialog.dismiss()
+            }
+            
+            saveButton.setOnClickListener {
+                galleryViewModel.addBarcode(barcodeValue, barcodeFormat)
+                saveBarcodesToSharedPreferences()
+                Toast.makeText(ctx, "Barcode saved to gallery", Toast.LENGTH_SHORT).show()
+                dialog.dismiss()
+            }
+            
+            dialog.show()
+        }
+    }
+    
     private fun setupRecyclerView() {
         barcodeAdapter = BarcodeAdapter()
         binding.recyclerViewBarcodes.apply {
@@ -99,8 +145,75 @@ class GalleryFragment : Fragment() {
             adapter = barcodeAdapter
         }
         
+        // Add swipe-to-delete functionality
+        val itemTouchHelper = ItemTouchHelper(object : ItemTouchHelper.SimpleCallback(
+            0, ItemTouchHelper.LEFT or ItemTouchHelper.RIGHT
+        ) {
+            override fun onMove(
+                recyclerView: RecyclerView,
+                viewHolder: RecyclerView.ViewHolder,
+                target: RecyclerView.ViewHolder
+            ): Boolean {
+                return false // We don't support moving items
+            }
+
+            override fun onSwiped(viewHolder: RecyclerView.ViewHolder, direction: Int) {
+                val position = viewHolder.adapterPosition
+                val deletedBarcode = galleryViewModel.barcodes.value?.get(position)
+                
+                // Notify adapter to reset the view (cancel the swipe)
+                barcodeAdapter.notifyItemChanged(position)
+                
+                // Show confirmation dialog
+                deletedBarcode?.let { barcode ->
+                    showDeleteConfirmationDialog(barcode, position)
+                }
+            }
+            
+            override fun onChildDraw(
+                c: Canvas,
+                recyclerView: RecyclerView,
+                viewHolder: RecyclerView.ViewHolder,
+                dX: Float,
+                dY: Float,
+                actionState: Int,
+                isCurrentlyActive: Boolean
+            ) {
+                val itemView = viewHolder.itemView
+                val background = ColorDrawable()
+                
+                // Set red background when swiping
+                background.color = ContextCompat.getColor(requireContext(), android.R.color.holo_red_light)
+                
+                if (dX > 0) { // Swiping to the right
+                    background.setBounds(
+                        itemView.left,
+                        itemView.top,
+                        itemView.left + dX.toInt(),
+                        itemView.bottom
+                    )
+                } else { // Swiping to the left
+                    background.setBounds(
+                        itemView.right + dX.toInt(),
+                        itemView.top,
+                        itemView.right,
+                        itemView.bottom
+                    )
+                }
+                
+                background.draw(c)
+                
+                super.onChildDraw(c, recyclerView, viewHolder, dX, dY, actionState, isCurrentlyActive)
+            }
+        })
+        
+        itemTouchHelper.attachToRecyclerView(binding.recyclerViewBarcodes)
+        
         galleryViewModel.barcodes.observe(viewLifecycleOwner) { barcodes ->
             barcodeAdapter.submitList(barcodes)
+            
+            // Show/hide empty view
+            binding.emptyView.visibility = if (barcodes.isEmpty()) View.VISIBLE else View.GONE
         }
     }
     
@@ -143,6 +256,60 @@ class GalleryFragment : Fragment() {
         val sharedPreferences = requireActivity().getSharedPreferences("HoneypotPrefs", Context.MODE_PRIVATE)
         val barcodesJson = sharedPreferences.getString("barcodes_$galleryName", null)
         galleryViewModel.loadBarcodes(galleryName, barcodesJson)
+    }
+
+    private fun showDeleteConfirmationDialog(barcode: BarcodeData, position: Int) {
+        context?.let { ctx ->
+            // Create a custom dialog
+            val dialog = Dialog(ctx)
+            dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
+            dialog.setContentView(R.layout.dialog_barcode_confirmation)
+            
+            // Make dialog background transparent to show rounded corners
+            dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+            
+            // Set up dialog views
+            val titleTextView = dialog.findViewById<TextView>(R.id.dialog_title)
+            val valueTextView = dialog.findViewById<TextView>(R.id.barcode_value)
+            val formatTextView = dialog.findViewById<TextView>(R.id.barcode_format)
+            val cancelButton = dialog.findViewById<Button>(R.id.btn_cancel)
+            val saveButton = dialog.findViewById<Button>(R.id.btn_save)
+            
+            // Customize dialog for deletion
+            titleTextView.text = "Delete Barcode?"
+            valueTextView.text = barcode.value
+            formatTextView.text = "Format: ${barcode.format}"
+            cancelButton.text = "Cancel"
+            saveButton.text = "Delete"
+            
+            // Set button listeners
+            cancelButton.setOnClickListener {
+                dialog.dismiss()
+            }
+            
+            saveButton.setOnClickListener {
+                // Delete the barcode
+                galleryViewModel.deleteBarcode(position)
+                saveBarcodesToSharedPreferences()
+                
+                // Show undo option
+                val snackbar = Snackbar.make(
+                    binding.root,
+                    "Barcode deleted from '${galleryViewModel.currentGalleryName.value}'",
+                    Snackbar.LENGTH_LONG
+                )
+                snackbar.setAction("UNDO") {
+                    // Add the barcode back
+                    galleryViewModel.addBarcode(barcode.value, barcode.format)
+                    saveBarcodesToSharedPreferences()
+                }
+                snackbar.show()
+                
+                dialog.dismiss()
+            }
+            
+            dialog.show()
+        }
     }
 
     override fun onDestroyView() {
