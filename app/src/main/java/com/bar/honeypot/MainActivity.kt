@@ -79,18 +79,22 @@ class MainActivity : AppCompatActivity() {
             drawerLayout.openDrawer(GravityCompat.START)
         }
         
-        // Passing each menu ID as a set of Ids because each
-        // menu should be considered as top level destinations.
-        appBarConfiguration = AppBarConfiguration(
-            setOf(
-                R.id.nav_home, R.id.nav_gallery
-            ), drawerLayout
-        )
+        // Configure app bar with empty top-level destinations
+        appBarConfiguration = AppBarConfiguration(emptySet(), drawerLayout)
         setupActionBarWithNavController(navController, appBarConfiguration)
-        navView.setupWithNavController(navController)
         
         // Restore saved galleries to the menu
         restoreGalleriesToMenu(navView, navController)
+        
+        // If there are no galleries, show the create gallery dialog
+        if (customGalleries.isEmpty()) {
+            showAddGalleryDialog(navView, navController)
+        } else {
+            // Navigate to the first gallery
+            val firstGallery = customGalleries.first()
+            val bundle = bundleOf("gallery_name" to firstGallery)
+            navController.navigate(R.id.nav_gallery, bundle)
+        }
     }
     
     private fun loadSavedGalleries() {
@@ -198,11 +202,15 @@ class MainActivity : AppCompatActivity() {
         // Rebuild the navigation menu
         rebuildNavigationMenu(navView, navController)
         
-        // Navigate to home if we're in the deleted gallery
-        if (navController.currentDestination?.id == R.id.nav_gallery) {
-            val currentGalleryName = navController.currentBackStackEntry?.arguments?.getString("gallery_name")
-            if (currentGalleryName == galleryName) {
-                navController.navigate(R.id.nav_home)
+        // If all galleries are deleted, show the create gallery dialog
+        if (customGalleries.isEmpty()) {
+            showAddGalleryDialog(navView, navController)
+        } else {
+            // Navigate to another gallery if we're in the deleted gallery
+            if (navController.currentBackStackEntry?.arguments?.getString("gallery_name") == galleryName) {
+                val firstGallery = customGalleries.first()
+                val bundle = bundleOf("gallery_name" to firstGallery)
+                navController.navigate(R.id.nav_gallery, bundle)
             }
         }
         
