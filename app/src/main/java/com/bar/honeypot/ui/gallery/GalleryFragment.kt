@@ -5,6 +5,7 @@ import android.app.Activity
 import android.app.Dialog
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ActivityInfo
 import android.content.pm.PackageManager
 import android.graphics.Canvas
 import android.graphics.Color
@@ -105,6 +106,12 @@ class GalleryFragment : Fragment() {
     
     private fun showBarcodeConfirmationDialog(barcodeValue: String, barcodeFormat: String) {
         context?.let { ctx ->
+            // Check if this barcode already exists in the gallery
+            if (galleryViewModel.isDuplicateBarcode(barcodeValue)) {
+                Toast.makeText(ctx, "This barcode already exists in '${galleryViewModel.currentGalleryName.value}'", Toast.LENGTH_LONG).show()
+                return
+            }
+            
             // Create a custom dialog
             val dialog = Dialog(ctx)
             dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
@@ -129,6 +136,7 @@ class GalleryFragment : Fragment() {
             }
             
             saveButton.setOnClickListener {
+                // Add the barcode (no need to check for duplicates again here)
                 galleryViewModel.addBarcode(barcodeValue, barcodeFormat)
                 saveBarcodesToSharedPreferences()
                 Toast.makeText(ctx, "Barcode saved to gallery", Toast.LENGTH_SHORT).show()
@@ -303,8 +311,10 @@ class GalleryFragment : Fragment() {
                 )
                 snackbar.setAction("UNDO") {
                     // Add the barcode back
-                    galleryViewModel.addBarcode(barcode.value, barcode.format)
-                    saveBarcodesToSharedPreferences()
+                    val added = galleryViewModel.addBarcode(barcode.value, barcode.format)
+                    if (added) {
+                        saveBarcodesToSharedPreferences()
+                    }
                 }
                 snackbar.show()
                 
@@ -325,6 +335,9 @@ class GalleryFragment : Fragment() {
             // Make dialog background transparent to show rounded corners
             dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
             
+            // Check if this is a long CODE_128 barcode
+            val isLongCode128 = barcode.format == "CODE_128" && barcode.value.length > 20
+            
             // Set up dialog views
             val titleTextView = dialog.findViewById<TextView>(R.id.dialog_title)
             val valueTextView = dialog.findViewById<TextView>(R.id.barcode_value)
@@ -339,6 +352,13 @@ class GalleryFragment : Fragment() {
             
             // Generate and display the barcode
             generateBarcodeImage(barcode.value, barcode.format, barcodeImageView)
+            
+            // Adjust layout for long barcodes if needed
+            if (isLongCode128) {
+                barcodeImageView.layoutParams.width = ViewGroup.LayoutParams.MATCH_PARENT
+                barcodeImageView.layoutParams.height = 200
+                barcodeImageView.layoutParams = barcodeImageView.layoutParams
+            }
             
             // Set button listener
             closeButton.setOnClickListener {
@@ -356,6 +376,7 @@ class GalleryFragment : Fragment() {
                 "QR_CODE" -> com.google.zxing.BarcodeFormat.QR_CODE
                 "CODE_128" -> com.google.zxing.BarcodeFormat.CODE_128
                 "CODE_39" -> com.google.zxing.BarcodeFormat.CODE_39
+                "CODE_93" -> com.google.zxing.BarcodeFormat.CODE_93
                 "EAN_13" -> com.google.zxing.BarcodeFormat.EAN_13
                 "EAN_8" -> com.google.zxing.BarcodeFormat.EAN_8
                 "UPC_A" -> com.google.zxing.BarcodeFormat.UPC_A
@@ -370,7 +391,12 @@ class GalleryFragment : Fragment() {
             
             // Create MultiFormatWriter to generate the barcode
             val writer = com.journeyapps.barcodescanner.BarcodeEncoder()
-            val bitMatrix = writer.encode(barcodeValue, format, 512, 512)
+            
+            // Adjust width for CODE_128
+            val width = if (barcodeFormat == "CODE_128" && barcodeValue.length > 20) 800 else 512
+            val height = if (barcodeFormat == "CODE_128" && barcodeValue.length > 20) 200 else 512
+            
+            val bitMatrix = writer.encode(barcodeValue, format, width, height)
             val bitmap = writer.createBitmap(bitMatrix)
             
             // Set the bitmap to the ImageView

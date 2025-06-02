@@ -23,8 +23,20 @@ class GalleryViewModel : ViewModel() {
         _currentGalleryName.value = name
     }
     
-    fun addBarcode(value: String, format: String) {
+    /**
+     * Adds a barcode to the gallery if it doesn't already exist.
+     * @param value The barcode value
+     * @param format The barcode format
+     * @return true if the barcode was added, false if it's a duplicate
+     */
+    fun addBarcode(value: String, format: String): Boolean {
         val currentList = _barcodes.value ?: mutableListOf()
+        
+        // Check if this barcode already exists in the gallery
+        if (isDuplicateBarcode(value)) {
+            return false
+        }
+        
         val newBarcode = BarcodeData(
             value = value,
             format = format,
@@ -32,6 +44,17 @@ class GalleryViewModel : ViewModel() {
         )
         currentList.add(newBarcode)
         _barcodes.value = currentList
+        return true
+    }
+    
+    /**
+     * Checks if a barcode already exists in the current gallery.
+     * @param value The barcode value to check
+     * @return true if the barcode already exists, false otherwise
+     */
+    fun isDuplicateBarcode(value: String): Boolean {
+        val currentList = _barcodes.value ?: return false
+        return currentList.any { it.value == value }
     }
     
     fun deleteBarcode(position: Int) {
