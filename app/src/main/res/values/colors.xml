@@ -1,6 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Neon color palette with pink/purple focus -->
+    <!-- Main color theme - Focused neon palette -->
+    <color name="primary">#7A3CB5</color>           <!-- Neon purple as primary -->
+    <color name="primary_variant">#9400D3</color>   <!-- Darker variant -->
+    <color name="secondary">#FF00CC</color>         <!-- Neon magenta as secondary -->
+    <color name="accent">#00FFFF</color>            <!-- Neon blue as accent -->
+    
+    <!-- Neon color palette kept for specific uses -->
     <color name="neon_pink">#FF00FF</color>
     <color name="neon_hot_pink">#FF6BCB</color>
     <color name="neon_magenta">#FF00CC</color>
@@ -24,8 +30,8 @@
     <!-- Enhanced UI color palette -->
     <color name="background_dark">#121212</color>
     <color name="surface_dark">#1E1E1E</color>
-    <color name="card_background">#2A2A2A</color>
-    <color name="text_primary">#E0E0E0</color>
+    <color name="card_background">#242424</color>    <!-- Matching item_barcode.xml -->
+    <color name="text_primary">#E0E0E0</color>      <!-- Improved contrast for dark mode -->
     <color name="text_secondary">#B0B0B0</color>
     <color name="divider">#383838</color>
 </resources>
