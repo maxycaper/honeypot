@@ -62,7 +62,7 @@ class GalleryFragment : Fragment() {
             val barcodeFormat = data?.getStringExtra(BarcodeScannerActivity.BARCODE_FORMAT)
             
             if (barcodeValue != null && barcodeFormat != null) {
-                showBarcodeConfirmationDialog(barcodeValue, barcodeFormat)
+                showBarcodeConfirmationDialog(barcodeValue, barcodeFormat, data)
             }
         }
     }
@@ -104,13 +104,28 @@ class GalleryFragment : Fragment() {
         return root
     }
     
-    private fun showBarcodeConfirmationDialog(barcodeValue: String, barcodeFormat: String) {
+    private fun showBarcodeConfirmationDialog(barcodeValue: String, barcodeFormat: String, data: Intent) {
         context?.let { ctx ->
             // Check if this barcode already exists in the gallery
             if (galleryViewModel.isDuplicateBarcode(barcodeValue)) {
                 Toast.makeText(ctx, "This barcode already exists in '${galleryViewModel.currentGalleryName.value}'", Toast.LENGTH_LONG).show()
                 return
             }
+            
+            // Get additional metadata from intent
+            val title = data.getStringExtra(BarcodeScannerActivity.BARCODE_TITLE) ?: ""
+            val description = data.getStringExtra(BarcodeScannerActivity.BARCODE_DESCRIPTION) ?: ""
+            val url = data.getStringExtra(BarcodeScannerActivity.BARCODE_URL) ?: ""
+            val email = data.getStringExtra(BarcodeScannerActivity.BARCODE_EMAIL) ?: ""
+            val phone = data.getStringExtra(BarcodeScannerActivity.BARCODE_PHONE) ?: ""
+            val smsContent = data.getStringExtra(BarcodeScannerActivity.BARCODE_SMS) ?: ""
+            val wifiSsid = data.getStringExtra(BarcodeScannerActivity.BARCODE_WIFI_SSID) ?: ""
+            val wifiPassword = data.getStringExtra(BarcodeScannerActivity.BARCODE_WIFI_PASSWORD) ?: ""
+            val wifiType = data.getStringExtra(BarcodeScannerActivity.BARCODE_WIFI_TYPE) ?: ""
+            val geoLat = data.getDoubleExtra(BarcodeScannerActivity.BARCODE_GEO_LAT, 0.0)
+            val geoLng = data.getDoubleExtra(BarcodeScannerActivity.BARCODE_GEO_LNG, 0.0)
+            val productName = data.getStringExtra(BarcodeScannerActivity.BARCODE_PRODUCT_NAME) ?: ""
+            val contactInfo = data.getStringExtra(BarcodeScannerActivity.BARCODE_CONTACT_INFO) ?: ""
             
             // Create a custom dialog
             val dialog = Dialog(ctx)
@@ -121,14 +136,43 @@ class GalleryFragment : Fragment() {
             dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
             
             // Set up dialog views
+            val dialogTitle = dialog.findViewById<TextView>(R.id.dialog_title)
             val valueTextView = dialog.findViewById<TextView>(R.id.barcode_value)
             val formatTextView = dialog.findViewById<TextView>(R.id.barcode_format)
             val cancelButton = dialog.findViewById<Button>(R.id.btn_cancel)
             val saveButton = dialog.findViewById<Button>(R.id.btn_save)
             
+            // Set dialog title based on barcode type
+            if (title.isNotEmpty()) {
+                dialogTitle.text = title
+            } else if (productName.isNotEmpty()) {
+                dialogTitle.text = productName
+            } else if (url.isNotEmpty()) {
+                dialogTitle.text = "URL Barcode"
+            } else {
+                dialogTitle.text = "Save Barcode?"
+            }
+            
             // Set barcode information
             valueTextView.text = barcodeValue
-            formatTextView.text = "Format: $barcodeFormat"
+            
+            // Enhanced format display
+            val formatText = StringBuilder("Format: $barcodeFormat")
+            
+            // Add metadata type if available
+            if (url.isNotEmpty()) {
+                formatText.append(" (URL)")
+            } else if (email.isNotEmpty()) {
+                formatText.append(" (Email)")
+            } else if (phone.isNotEmpty()) {
+                formatText.append(" (Phone)")
+            } else if (wifiSsid.isNotEmpty()) {
+                formatText.append(" (WiFi)")
+            } else if (contactInfo.isNotEmpty()) {
+                formatText.append(" (Contact)")
+            }
+            
+            formatTextView.text = formatText.toString()
             
             // Set button listeners
             cancelButton.setOnClickListener {
@@ -136,8 +180,24 @@ class GalleryFragment : Fragment() {
             }
             
             saveButton.setOnClickListener {
-                // Add the barcode (no need to check for duplicates again here)
-                galleryViewModel.addBarcode(barcodeValue, barcodeFormat)
+                // Add the barcode with all metadata
+                galleryViewModel.addBarcode(
+                    value = barcodeValue,
+                    format = barcodeFormat,
+                    title = title,
+                    description = description,
+                    url = url,
+                    email = email,
+                    phone = phone,
+                    smsContent = smsContent,
+                    wifiSsid = wifiSsid,
+                    wifiPassword = wifiPassword,
+                    wifiType = wifiType,
+                    geoLat = geoLat,
+                    geoLng = geoLng,
+                    productName = productName,
+                    contactInfo = contactInfo
+                )
                 saveBarcodesToSharedPreferences()
                 Toast.makeText(ctx, "Barcode saved to gallery", Toast.LENGTH_SHORT).show()
                 dialog.dismiss()
@@ -343,12 +403,31 @@ class GalleryFragment : Fragment() {
             val valueTextView = dialog.findViewById<TextView>(R.id.barcode_value)
             val formatTextView = dialog.findViewById<TextView>(R.id.barcode_format)
             val barcodeImageView = dialog.findViewById<ImageView>(R.id.barcode_image)
+            val descriptionView = dialog.findViewById<TextView>(R.id.barcode_description)
             val closeButton = dialog.findViewById<Button>(R.id.btn_close)
             
             // Set barcode information
-            titleTextView.text = "Barcode Display"
+            if (barcode.title.isNotEmpty()) {
+                titleTextView.text = barcode.title
+            } else if (barcode.productName.isNotEmpty()) {
+                titleTextView.text = barcode.productName
+            } else if (barcode.url.isNotEmpty()) {
+                titleTextView.text = "URL Barcode"
+            } else {
+                titleTextView.text = "Barcode Display"
+            }
+            
             valueTextView.text = barcode.value
-            formatTextView.text = "Format: ${barcode.format}"
+            
+            // Enhanced format display
+            val formatText = StringBuilder("Format: ${barcode.format}")
+            
+            // Add metadata type if barcode has additional data
+            if (barcode.hasMetadata()) {
+                formatText.append(" (${barcode.getMetadataType()})")
+            }
+            
+            formatTextView.text = formatText.toString()
             
             // Generate and display the barcode
             generateBarcodeImage(barcode.value, barcode.format, barcodeImageView)
@@ -358,6 +437,49 @@ class GalleryFragment : Fragment() {
                 barcodeImageView.layoutParams.width = ViewGroup.LayoutParams.MATCH_PARENT
                 barcodeImageView.layoutParams.height = 200
                 barcodeImageView.layoutParams = barcodeImageView.layoutParams
+            }
+            
+            // Show additional metadata if available
+            val metadataText = StringBuilder()
+            
+            if (barcode.description.isNotEmpty()) {
+                metadataText.append(barcode.description).append("\n\n")
+            }
+            
+            if (barcode.url.isNotEmpty()) {
+                metadataText.append("URL: ${barcode.url}").append("\n\n")
+            }
+            
+            if (barcode.email.isNotEmpty()) {
+                metadataText.append("Email: ${barcode.email}").append("\n\n")
+            }
+            
+            if (barcode.phone.isNotEmpty()) {
+                metadataText.append("Phone: ${barcode.phone}").append("\n\n")
+            }
+            
+            if (barcode.wifiSsid.isNotEmpty()) {
+                metadataText.append("WiFi: ${barcode.wifiSsid}")
+                if (barcode.wifiPassword.isNotEmpty()) {
+                    metadataText.append(", Password: ${barcode.wifiPassword}")
+                }
+                metadataText.append("\n\n")
+            }
+            
+            if (barcode.contactInfo.isNotEmpty()) {
+                metadataText.append(barcode.contactInfo).append("\n\n")
+            }
+            
+            if (barcode.geoLat != 0.0 && barcode.geoLng != 0.0) {
+                metadataText.append("Location: ${barcode.geoLat}, ${barcode.geoLng}").append("\n\n")
+            }
+            
+            // Set description text or hide if none
+            if (metadataText.isNotEmpty()) {
+                descriptionView.text = metadataText.toString().trim()
+                descriptionView.visibility = View.VISIBLE
+            } else {
+                descriptionView.visibility = View.GONE
             }
             
             // Set button listener

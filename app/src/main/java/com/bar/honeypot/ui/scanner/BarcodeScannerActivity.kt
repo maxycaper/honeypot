@@ -34,6 +34,19 @@ class BarcodeScannerActivity : AppCompatActivity() {
         private const val REQUEST_CAMERA_PERMISSION = 10
         const val BARCODE_VALUE = "barcode_value"
         const val BARCODE_FORMAT = "barcode_format"
+        const val BARCODE_TITLE = "barcode_title"
+        const val BARCODE_DESCRIPTION = "barcode_description"
+        const val BARCODE_URL = "barcode_url"
+        const val BARCODE_EMAIL = "barcode_email"
+        const val BARCODE_PHONE = "barcode_phone"
+        const val BARCODE_SMS = "barcode_sms"
+        const val BARCODE_WIFI_SSID = "barcode_wifi_ssid"
+        const val BARCODE_WIFI_PASSWORD = "barcode_wifi_password"
+        const val BARCODE_WIFI_TYPE = "barcode_wifi_type"
+        const val BARCODE_GEO_LAT = "barcode_geo_lat"
+        const val BARCODE_GEO_LNG = "barcode_geo_lng"
+        const val BARCODE_PRODUCT_NAME = "barcode_product_name"
+        const val BARCODE_CONTACT_INFO = "barcode_contact_info"
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -88,7 +101,7 @@ class BarcodeScannerActivity : AppCompatActivity() {
                                 barcode.rawValue?.let { value ->
                                     val format = getReadableFormat(barcode.format)
                                     Log.d(TAG, "Barcode found: $value, format: $format")
-                                    returnBarcodeResult(value, format)
+                                    extractAndReturnBarcodeData(barcode, value, format)
                                     return@BarcodeAnalyzer
                                 }
                             }
@@ -135,11 +148,95 @@ class BarcodeScannerActivity : AppCompatActivity() {
         }
     }
 
-    private fun returnBarcodeResult(value: String, format: String) {
+    private fun extractAndReturnBarcodeData(barcode: Barcode, value: String, format: String) {
         val resultIntent = Intent().apply {
             putExtra(BARCODE_VALUE, value)
             putExtra(BARCODE_FORMAT, format)
+            
+            // Extract URL data
+            barcode.url?.let { urlInfo ->
+                urlInfo.url?.let { putExtra(BARCODE_URL, it) }
+                urlInfo.title?.let { putExtra(BARCODE_TITLE, it) }
+                if (urlInfo.url != null) {
+                    putExtra(BARCODE_DESCRIPTION, "Website link")
+                }
+            }
+            
+            // Extract email data
+            barcode.email?.let { emailInfo ->
+                emailInfo.address?.let { putExtra(BARCODE_EMAIL, it) }
+                if (emailInfo.subject?.isNotEmpty() == true || emailInfo.body?.isNotEmpty() == true) {
+                    val emailContent = StringBuilder()
+                    emailInfo.subject?.let { emailContent.append("Subject: $it\n") }
+                    emailInfo.body?.let { emailContent.append("Body: $it") }
+                    putExtra(BARCODE_DESCRIPTION, emailContent.toString())
+                }
+            }
+            
+            // Extract phone data
+            barcode.phone?.let { phoneInfo ->
+                phoneInfo.number?.let { putExtra(BARCODE_PHONE, it) }
+            }
+            
+            // Extract SMS data
+            barcode.sms?.let { smsInfo ->
+                smsInfo.phoneNumber?.let { putExtra(BARCODE_PHONE, it) }
+                smsInfo.message?.let { putExtra(BARCODE_SMS, it) }
+            }
+            
+            // Extract WiFi data
+            barcode.wifi?.let { wifiInfo ->
+                wifiInfo.ssid?.let { putExtra(BARCODE_WIFI_SSID, it) }
+                wifiInfo.password?.let { putExtra(BARCODE_WIFI_PASSWORD, it) }
+                putExtra(BARCODE_WIFI_TYPE, wifiInfo.encryptionType.toString())
+            }
+            
+            // Extract geographic coordinates
+            barcode.geoPoint?.let { geoInfo ->
+                putExtra(BARCODE_GEO_LAT, geoInfo.lat)
+                putExtra(BARCODE_GEO_LNG, geoInfo.lng)
+            }
+            
+            // Extract product information
+            barcode.calendarEvent?.let {
+                val eventInfo = StringBuilder()
+                it.summary?.let { summary -> eventInfo.append(summary) }
+                putExtra(BARCODE_TITLE, eventInfo.toString())
+            }
+            
+            // Extract contact information
+            barcode.contactInfo?.let { contactInfo ->
+                val name = contactInfo.name?.formattedName ?: "Contact"
+                putExtra(BARCODE_TITLE, name)
+                
+                val contactDetails = StringBuilder()
+                contactInfo.emails?.forEach { email ->
+                    email.address?.let { addr -> 
+                        contactDetails.append("Email: $addr\n") 
+                    }
+                }
+                contactInfo.phones?.forEach { phone ->
+                    phone.number?.let { num -> 
+                        contactDetails.append("Phone: $num\n") 
+                    }
+                }
+                contactInfo.addresses?.forEach { address ->
+                    address.addressLines?.let { lines -> 
+                        contactDetails.append("Address: ${lines.joinToString(", ")}\n") 
+                    }
+                }
+                
+                if (contactDetails.isNotEmpty()) {
+                    putExtra(BARCODE_CONTACT_INFO, contactDetails.toString().trim())
+                }
+            }
+            
+            // For product barcodes (EAN, UPC, etc.)
+            if (format.contains("EAN") || format.contains("UPC")) {
+                putExtra(BARCODE_PRODUCT_NAME, "Product: $value")
+            }
         }
+        
         setResult(RESULT_OK, resultIntent)
         finish()
     }

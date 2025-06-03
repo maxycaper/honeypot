@@ -27,9 +27,26 @@ class GalleryViewModel : ViewModel() {
      * Adds a barcode to the gallery if it doesn't already exist.
      * @param value The barcode value
      * @param format The barcode format
+     * @param metadata Additional barcode metadata
      * @return true if the barcode was added, false if it's a duplicate
      */
-    fun addBarcode(value: String, format: String): Boolean {
+    fun addBarcode(
+        value: String, 
+        format: String,
+        title: String = "",
+        description: String = "",
+        url: String = "",
+        email: String = "",
+        phone: String = "",
+        smsContent: String = "",
+        wifiSsid: String = "",
+        wifiPassword: String = "",
+        wifiType: String = "",
+        geoLat: Double = 0.0,
+        geoLng: Double = 0.0,
+        productName: String = "",
+        contactInfo: String = ""
+    ): Boolean {
         val currentList = _barcodes.value ?: mutableListOf()
         
         // Check if this barcode already exists in the gallery
@@ -40,7 +57,20 @@ class GalleryViewModel : ViewModel() {
         val newBarcode = BarcodeData(
             value = value,
             format = format,
-            galleryName = _currentGalleryName.value ?: "Unknown Gallery"
+            galleryName = _currentGalleryName.value ?: "Unknown Gallery",
+            title = title,
+            description = description,
+            url = url,
+            email = email,
+            phone = phone,
+            smsContent = smsContent,
+            wifiSsid = wifiSsid,
+            wifiPassword = wifiPassword,
+            wifiType = wifiType,
+            geoLat = geoLat,
+            geoLng = geoLng,
+            productName = productName,
+            contactInfo = contactInfo
         )
         currentList.add(newBarcode)
         _barcodes.value = currentList
