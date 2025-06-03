@@ -4,19 +4,21 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:layout_margin="16dp"
-    app:cardBackgroundColor="#20FFFFFF"
+    app:cardBackgroundColor="@color/surface_dark"
     app:cardCornerRadius="16dp"
     app:cardElevation="4dp">
 
     <ScrollView
         android:layout_width="match_parent"
-        android:layout_height="wrap_content">
+        android:layout_height="wrap_content"
+        android:background="@color/surface_dark">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:padding="24dp">
+            android:padding="24dp"
+            android:background="@color/surface_dark">
 
             <TextView
                 android:id="@+id/dialog_title"
@@ -28,6 +30,18 @@
                 android:textColor="@color/neon_purple"
                 android:textSize="22sp"
                 android:textStyle="bold" />
+                
+            <ImageView
+                android:id="@+id/product_image"
+                android:layout_width="200dp"
+                android:layout_height="200dp"
+                android:layout_gravity="center_horizontal"
+                android:layout_marginTop="16dp"
+                android:background="#20FFFFFF"
+                android:contentDescription="Product image"
+                android:padding="8dp"
+                android:scaleType="fitCenter"
+                android:visibility="gone" />
 
             <ImageView
                 android:id="@+id/barcode_image"
@@ -62,7 +76,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
-                android:background="#30FFFFFF"
+                android:background="@color/card_background"
                 android:padding="12dp"
                 android:textColor="@color/neon_hot_pink"
                 android:textSize="14sp"
@@ -75,17 +89,36 @@
                 android:layout_marginTop="24dp"
                 android:gravity="center"
                 android:text="This barcode can now be scanned by other devices"
-                android:textColor="#AAAAAA"
+                android:textColor="@color/text_secondary"
                 android:textSize="14sp" />
 
-            <Button
-                android:id="@+id/btn_close"
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="24dp"
-                android:background="@drawable/button_gradient"
-                android:text="Close"
-                android:textColor="@color/white" />
+                android:orientation="horizontal">
+
+                <Button
+                    android:id="@+id/btn_edit_title"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginEnd="8dp"
+                    android:layout_weight="1"
+                    android:background="@drawable/button_gradient"
+                    android:text="Edit Title"
+                    android:textColor="@color/white" />
+
+                <Button
+                    android:id="@+id/btn_close"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:layout_weight="1"
+                    android:background="@drawable/button_gradient"
+                    android:text="Close"
+                    android:textColor="@color/white" />
+
+            </LinearLayout>
 
         </LinearLayout>
     </ScrollView>

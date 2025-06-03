@@ -4,52 +4,41 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:layout_margin="8dp"
-    app:cardBackgroundColor="#20FFFFFF"
-    app:cardCornerRadius="10dp"
-    app:cardElevation="2dp">
+    app:cardBackgroundColor="#242424"
+    app:cardCornerRadius="12dp"
+    app:cardElevation="4dp">
 
     <LinearLayout
+        android:id="@+id/barcode_item_container"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
         android:padding="16dp">
 
         <TextView
-            android:id="@+id/tv_barcode_value"
+            android:id="@+id/barcode_title"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:textColor="@color/neon_hot_pink"
-            android:textSize="16sp"
+            android:textColor="@color/neon_purple"
+            android:textSize="18sp"
             android:textStyle="bold" />
 
-        <LinearLayout
+        <TextView
+            android:id="@+id/barcode_value"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
-            android:orientation="horizontal">
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Format: "
-                android:textColor="@color/white"
-                android:textSize="14sp" />
-
-            <TextView
-                android:id="@+id/tv_barcode_format"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:textColor="@color/neon_purple"
-                android:textSize="14sp" />
-        </LinearLayout>
+            android:textColor="@color/neon_hot_pink"
+            android:textSize="14sp" />
 
         <TextView
-            android:id="@+id/tv_timestamp"
+            android:id="@+id/barcode_format"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:textColor="#AAAAAA"
+            android:layout_marginTop="8dp"
+            android:textColor="@color/text_primary"
             android:textSize="12sp" />
 
     </LinearLayout>
+
 </androidx.cardview.widget.CardView> 

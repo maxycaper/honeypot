@@ -11,8 +11,8 @@ android {
         applicationId = "com.bar.honeypot"
         minSdk = 29
         targetSdk = 35
-        versionCode = 250506
-        versionName = "25.05.06"
+        versionCode = 250509
+        versionName = "25.05.09"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -66,6 +66,12 @@ dependencies {
     
     // Barcode generation
     implementation("com.journeyapps:zxing-android-embedded:4.3.0")
+    
+    // Network and API calls
+    implementation("com.squareup.retrofit2:retrofit:2.9.0")
+    implementation("com.squareup.retrofit2:converter-gson:2.9.0")
+    implementation("com.squareup.okhttp3:okhttp:4.11.0")
+    implementation("com.squareup.okhttp3:logging-interceptor:4.11.0")
     
     // Testing dependencies
     testImplementation(libs.junit)

@@ -5,6 +5,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.util.Log
+import android.view.View
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.camera.core.CameraSelector
@@ -14,15 +15,25 @@ import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.lifecycleScope
 import com.bar.honeypot.R
+import com.bar.honeypot.api.BarcodeInfoService
+import com.bar.honeypot.api.ProductApi
+import com.bar.honeypot.api.ProductResponse
 import com.bar.honeypot.databinding.ActivityBarcodeScannerBinding
 import com.google.mlkit.vision.barcode.BarcodeScanner
 import com.google.mlkit.vision.barcode.BarcodeScannerOptions
 import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.barcode.common.Barcode
 import com.google.mlkit.vision.common.InputImage
+import retrofit2.Call
+import retrofit2.Callback
+import retrofit2.Response
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class BarcodeScannerActivity : AppCompatActivity() {
     private lateinit var binding: ActivityBarcodeScannerBinding
@@ -47,6 +58,8 @@ class BarcodeScannerActivity : AppCompatActivity() {
         const val BARCODE_GEO_LNG = "barcode_geo_lng"
         const val BARCODE_PRODUCT_NAME = "barcode_product_name"
         const val BARCODE_CONTACT_INFO = "barcode_contact_info"
+        const val BARCODE_PRODUCT_BRAND = "barcode_product_brand"
+        const val BARCODE_PRODUCT_IMAGE_URL = "barcode_product_image_url"
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -149,9 +162,167 @@ class BarcodeScannerActivity : AppCompatActivity() {
     }
 
     private fun extractAndReturnBarcodeData(barcode: Barcode, value: String, format: String) {
+        // Check if this might be a product barcode (EAN, UPC)
+        if (isProductBarcode(format)) {
+            // Use the coroutine-based approach similar to the example code
+            lookupProductInfoCoroutine(value, format) { productName, brand, imageUrl ->
+                finishWithBarcodeData(barcode, value, format, productName, brand, imageUrl)
+            }
+        } else {
+            // Not a product barcode, return data immediately
+            finishWithBarcodeData(barcode, value, format, null, null, null)
+        }
+    }
+
+    private fun isProductBarcode(format: String): Boolean {
+        return format.contains("EAN") || 
+               format.contains("UPC") || 
+               format == "UPC_A" || 
+               format == "UPC_E" || 
+               format.contains("CODE_128")
+    }
+
+    private fun lookupProductInfo(
+        barcode: String, 
+        format: String,
+        callback: (String?, String?, String?) -> Unit
+    ) {
+        // Show loading indicator
+        runOnUiThread {
+            binding.loadingOverlay.visibility = View.VISIBLE
+            binding.loadingText.text = "Looking up product..."
+        }
+
+        Log.d(TAG, "Looking up product info for barcode: $barcode")
+
+        // Make API call to get product info
+        ProductApi.service.getProductInfo(barcode).enqueue(object : Callback<ProductResponse> {
+            override fun onResponse(call: Call<ProductResponse>, response: Response<ProductResponse>) {
+                Log.d(TAG, "API Response received: ${response.isSuccessful}, code: ${response.code()}")
+                
+                // Log the raw response body if available
+                if (response.isSuccessful) {
+                    val responseBody = response.body()
+                    Log.d(TAG, "Raw response: $responseBody")
+                    
+                    val product = responseBody?.product
+                    Log.d(TAG, "Product object: $product")
+                    
+                    // Get product info - try multiple fields for name and image
+                    val rawProductName = product?.productName 
+                        ?: product?.productNameEn
+                        ?: product?.genericName
+                        ?: product?.genericNameEn
+                        
+                    val brand = product?.brands
+                    
+                    // Format the product name with brand if available (similar to the working example)
+                    val productName = if (!brand.isNullOrEmpty() && !rawProductName.isNullOrEmpty()) {
+                        "$brand $rawProductName"
+                    } else {
+                        rawProductName
+                    }
+                    
+                    val imageUrl = product?.imageUrl 
+                        ?: product?.imageFrontUrl
+                    
+                    Log.d(TAG, "Extracted data - raw product name: '$rawProductName', brand: '$brand', formatted name: '$productName', imageUrl: '$imageUrl'")
+                    
+                    // Hide loading indicator
+                    runOnUiThread {
+                        binding.loadingOverlay.visibility = View.GONE
+                    }
+                    
+                    if (productName != null && productName.isNotEmpty()) {
+                        Log.d(TAG, "Product found: $productName, brand: $brand, imageUrl: $imageUrl")
+                    } else {
+                        Log.d(TAG, "No product name found for barcode: $barcode")
+                        
+                        // Attempt fallback to any available product info
+                        val fallbackName = if (brand != null && brand.isNotEmpty()) {
+                            Log.d(TAG, "Using brand as fallback product name: $brand")
+                            brand
+                        } else {
+                            Log.d(TAG, "No fallback product info available, using default")
+                            "Product: $barcode"
+                        }
+                        
+                        // If no product name was found but we have a valid response, check the response status
+                        responseBody?.let {
+                            Log.d(TAG, "API response status: ${it.status}, message: ${it.statusVerbose}")
+                        }
+                        
+                        // Return with fallback name
+                        callback(fallbackName, brand, imageUrl)
+                        return
+                    }
+                    
+                    // Return the result
+                    callback(productName, brand, imageUrl)
+                } else {
+                    Log.e(TAG, "API request failed: ${response.code()} - ${response.message()}")
+                    
+                    // Hide loading indicator
+                    runOnUiThread {
+                        binding.loadingOverlay.visibility = View.GONE
+                    }
+                    
+                    // Return null results
+                    callback(null, null, null)
+                }
+            }
+
+            override fun onFailure(call: Call<ProductResponse>, t: Throwable) {
+                // Hide loading indicator
+                runOnUiThread {
+                    binding.loadingOverlay.visibility = View.GONE
+                }
+                
+                Log.e(TAG, "Error looking up product: ${t.message}", t)
+                // Return null results
+                callback(null, null, null)
+            }
+        })
+    }
+    
+    private fun finishWithBarcodeData(
+        barcode: Barcode, 
+        value: String, 
+        format: String,
+        productName: String?,
+        brand: String?,
+        imageUrl: String?
+    ) {
+        Log.d(TAG, "Finishing with barcode data: value=$value, format=$format, productName=$productName, brand=$brand")
+        
         val resultIntent = Intent().apply {
             putExtra(BARCODE_VALUE, value)
             putExtra(BARCODE_FORMAT, format)
+            
+            // Add product info if available
+            if (!productName.isNullOrEmpty()) {
+                putExtra(BARCODE_PRODUCT_NAME, productName)
+                // Use product name as title by default
+                putExtra(BARCODE_TITLE, productName)
+                Log.d(TAG, "Set product name: $productName")
+            } else if (format.contains("EAN") || format.contains("UPC") || format.contains("CODE_128")) {
+                // For product barcodes with no API result
+                val defaultName = "Product: $value"
+                putExtra(BARCODE_PRODUCT_NAME, defaultName)
+                Log.d(TAG, "Set default product name: $defaultName")
+            }
+            
+            if (!brand.isNullOrEmpty()) {
+                putExtra(BARCODE_PRODUCT_BRAND, brand)
+                // Only override title with brand if specifically desired
+                // putExtra(BARCODE_TITLE, brand)
+                Log.d(TAG, "Set product brand: $brand")
+            }
+            
+            if (!imageUrl.isNullOrEmpty()) {
+                putExtra(BARCODE_PRODUCT_IMAGE_URL, imageUrl)
+                Log.d(TAG, "Set product image URL: $imageUrl")
+            }
             
             // Extract URL data
             barcode.url?.let { urlInfo ->
@@ -230,11 +401,6 @@ class BarcodeScannerActivity : AppCompatActivity() {
                     putExtra(BARCODE_CONTACT_INFO, contactDetails.toString().trim())
                 }
             }
-            
-            // For product barcodes (EAN, UPC, etc.)
-            if (format.contains("EAN") || format.contains("UPC")) {
-                putExtra(BARCODE_PRODUCT_NAME, "Product: $value")
-            }
         }
         
         setResult(RESULT_OK, resultIntent)
@@ -294,6 +460,60 @@ class BarcodeScannerActivity : AppCompatActivity() {
                     }
             } else {
                 imageProxy.close()
+            }
+        }
+    }
+
+    private fun lookupProductInfoCoroutine(
+        barcode: String, 
+        format: String,
+        callback: (String?, String?, String?) -> Unit
+    ) {
+        // Show loading indicator
+        runOnUiThread {
+            binding.loadingOverlay.visibility = View.VISIBLE
+            binding.loadingText.text = "Looking up product..."
+        }
+
+        Log.d(TAG, "Looking up product info using coroutines for barcode: $barcode")
+        
+        lifecycleScope.launch {
+            try {
+                val productInfo = BarcodeInfoService.getProductInfo(barcode)
+                
+                // Hide loading indicator
+                withContext(Dispatchers.Main) {
+                    binding.loadingOverlay.visibility = View.GONE
+                }
+                
+                if (productInfo != null) {
+                    Log.d(TAG, "Product found: name=${productInfo.name}, brand=${productInfo.brand}, imageUrl=${productInfo.imageUrl}")
+                    
+                    // Format the product name with brand if both are available
+                    val formattedName = if (productInfo.brand.isNotEmpty() && productInfo.name.isNotEmpty()) {
+                        "${productInfo.brand} ${productInfo.name}"
+                    } else if (productInfo.name.isNotEmpty()) {
+                        productInfo.name
+                    } else if (productInfo.brand.isNotEmpty()) {
+                        productInfo.brand
+                    } else {
+                        null
+                    }
+                    
+                    callback(formattedName, productInfo.brand, productInfo.imageUrl)
+                } else {
+                    Log.d(TAG, "No product found for barcode: $barcode")
+                    callback(null, null, null)
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error looking up product: ${e.message}", e)
+                
+                // Hide loading indicator
+                withContext(Dispatchers.Main) {
+                    binding.loadingOverlay.visibility = View.GONE
+                }
+                
+                callback(null, null, null)
             }
         }
     }

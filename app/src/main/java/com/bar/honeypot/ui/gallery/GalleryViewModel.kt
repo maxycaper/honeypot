@@ -45,7 +45,8 @@ class GalleryViewModel : ViewModel() {
         geoLat: Double = 0.0,
         geoLng: Double = 0.0,
         productName: String = "",
-        contactInfo: String = ""
+        contactInfo: String = "",
+        productImageUrl: String = ""
     ): Boolean {
         val currentList = _barcodes.value ?: mutableListOf()
         
@@ -70,7 +71,8 @@ class GalleryViewModel : ViewModel() {
             geoLat = geoLat,
             geoLng = geoLng,
             productName = productName,
-            contactInfo = contactInfo
+            contactInfo = contactInfo,
+            productImageUrl = productImageUrl
         )
         currentList.add(newBarcode)
         _barcodes.value = currentList
@@ -117,5 +119,24 @@ class GalleryViewModel : ViewModel() {
         } catch (e: Exception) {
             _barcodes.value = mutableListOf()
         }
+    }
+    
+    /**
+     * Updates the title of a barcode at the given position
+     * @param position The position of the barcode in the list
+     * @param newTitle The new title to set
+     * @return true if successful, false otherwise
+     */
+    fun updateBarcodeTitle(position: Int, newTitle: String): Boolean {
+        val currentList = _barcodes.value ?: return false
+        
+        if (position in 0 until currentList.size) {
+            val updatedBarcode = currentList[position].copy(title = newTitle)
+            currentList[position] = updatedBarcode
+            _barcodes.value = currentList
+            return true
+        }
+        
+        return false
     }
 }

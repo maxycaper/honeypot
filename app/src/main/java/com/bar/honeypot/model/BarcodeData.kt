@@ -19,7 +19,8 @@ data class BarcodeData(
     val geoLat: Double = 0.0,
     val geoLng: Double = 0.0,
     val productName: String = "",
-    val contactInfo: String = ""
+    val contactInfo: String = "",
+    val productImageUrl: String = ""
 ) {
     fun getFormattedTimestamp(): String {
         val date = Date(timestamp)
@@ -36,6 +37,7 @@ data class BarcodeData(
                wifiSsid.isNotEmpty() || 
                productName.isNotEmpty() || 
                contactInfo.isNotEmpty() ||
+               productImageUrl.isNotEmpty() ||
                (geoLat != 0.0 && geoLng != 0.0)
     }
     
@@ -46,10 +48,14 @@ data class BarcodeData(
             phone.isNotEmpty() -> "Phone"
             smsContent.isNotEmpty() -> "SMS"
             wifiSsid.isNotEmpty() -> "WiFi"
+            productName.isNotEmpty() -> "Product"
             geoLat != 0.0 && geoLng != 0.0 -> "Location"
             contactInfo.isNotEmpty() -> "Contact"
-            productName.isNotEmpty() -> "Product"
             else -> "Text"
         }
+    }
+    
+    fun isProduct(): Boolean {
+        return productName.isNotEmpty() || format.contains("EAN") || format.contains("UPC")
     }
 } 

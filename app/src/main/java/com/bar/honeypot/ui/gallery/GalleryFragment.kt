@@ -9,13 +9,20 @@ import android.content.pm.ActivityInfo
 import android.content.pm.PackageManager
 import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.LinearGradient
+import android.graphics.Paint
+import android.graphics.Rect
+import android.graphics.Shader
 import android.graphics.drawable.ColorDrawable
 import android.os.Bundle
+import android.text.Html
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.view.Window
 import android.widget.Button
+import android.widget.EditText
 import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
@@ -60,6 +67,20 @@ class GalleryFragment : Fragment() {
             val data = result.data
             val barcodeValue = data?.getStringExtra(BarcodeScannerActivity.BARCODE_VALUE)
             val barcodeFormat = data?.getStringExtra(BarcodeScannerActivity.BARCODE_FORMAT)
+            val productName = data?.getStringExtra(BarcodeScannerActivity.BARCODE_PRODUCT_NAME)
+            val productBrand = data?.getStringExtra(BarcodeScannerActivity.BARCODE_PRODUCT_BRAND)
+            val productImageUrl = data?.getStringExtra(BarcodeScannerActivity.BARCODE_PRODUCT_IMAGE_URL)
+            val title = data?.getStringExtra(BarcodeScannerActivity.BARCODE_TITLE)
+            
+            // Log all extras from the intent for debugging
+            Log.d("GalleryFragment", "--- Barcode Scanner Result Extras ---")
+            data?.extras?.keySet()?.forEach { key ->
+                Log.d("GalleryFragment", "Extra: $key = ${data.extras?.get(key)}")
+            }
+            
+            // Log received product information
+            Log.d("GalleryFragment", "Received barcode: $barcodeValue, format: $barcodeFormat")
+            Log.d("GalleryFragment", "Product info - name: '$productName', brand: '$productBrand', title: '$title', imageUrl: '$productImageUrl'")
             
             if (barcodeValue != null && barcodeFormat != null) {
                 showBarcodeConfirmationDialog(barcodeValue, barcodeFormat, data)
@@ -126,6 +147,7 @@ class GalleryFragment : Fragment() {
             val geoLng = data.getDoubleExtra(BarcodeScannerActivity.BARCODE_GEO_LNG, 0.0)
             val productName = data.getStringExtra(BarcodeScannerActivity.BARCODE_PRODUCT_NAME) ?: ""
             val contactInfo = data.getStringExtra(BarcodeScannerActivity.BARCODE_CONTACT_INFO) ?: ""
+            val productImageUrl = data.getStringExtra(BarcodeScannerActivity.BARCODE_PRODUCT_IMAGE_URL) ?: ""
             
             // Create a custom dialog
             val dialog = Dialog(ctx)
@@ -139,19 +161,24 @@ class GalleryFragment : Fragment() {
             val dialogTitle = dialog.findViewById<TextView>(R.id.dialog_title)
             val valueTextView = dialog.findViewById<TextView>(R.id.barcode_value)
             val formatTextView = dialog.findViewById<TextView>(R.id.barcode_format)
+            val descriptionView = dialog.findViewById<TextView>(R.id.barcode_description)
+            val productImageView = dialog.findViewById<ImageView>(R.id.product_image)
             val cancelButton = dialog.findViewById<Button>(R.id.btn_cancel)
             val saveButton = dialog.findViewById<Button>(R.id.btn_save)
             
-            // Set dialog title based on barcode type
-            if (title.isNotEmpty()) {
-                dialogTitle.text = title
-            } else if (productName.isNotEmpty()) {
-                dialogTitle.text = productName
-            } else if (url.isNotEmpty()) {
-                dialogTitle.text = "URL Barcode"
-            } else {
-                dialogTitle.text = "Save Barcode?"
+            // Set informative title based on content
+            val dialogTitleText = when {
+                productName.isNotEmpty() && !productName.startsWith("Product:") -> productName
+                title.isNotEmpty() -> title
+                url.isNotEmpty() -> "Save URL Barcode?"
+                email.isNotEmpty() -> "Save Email Barcode?"
+                phone.isNotEmpty() -> "Save Phone Barcode?"
+                wifiSsid.isNotEmpty() -> "Save WiFi Network?"
+                contactInfo.isNotEmpty() -> "Save Contact Information?"
+                geoLat != 0.0 && geoLng != 0.0 -> "Save Location?"
+                else -> "Save Barcode?"
             }
+            dialogTitle.text = dialogTitleText
             
             // Set barcode information
             valueTextView.text = barcodeValue
@@ -170,9 +197,80 @@ class GalleryFragment : Fragment() {
                 formatText.append(" (WiFi)")
             } else if (contactInfo.isNotEmpty()) {
                 formatText.append(" (Contact)")
+            } else if (productName.isNotEmpty()) {
+                formatText.append(" (Product)")
             }
             
             formatTextView.text = formatText.toString()
+            
+            // Show product image if available
+            if (productImageUrl.isNotEmpty()) {
+                // Load the image using Glide or similar library
+                // For this example, we'll just show the image view and set a background color
+                productImageView.visibility = View.VISIBLE
+                // You would use a library like Glide or Picasso here to load the image:
+                // Glide.with(this).load(productImageUrl).into(productImageView)
+            } else {
+                productImageView.visibility = View.GONE
+            }
+            
+            // Show all available metadata in a formatted way
+            val metadataText = StringBuilder()
+            
+            if (productName.isNotEmpty() && !dialogTitleText.equals(productName)) {
+                if (productName.startsWith("Product:")) {
+                    metadataText.append("<b>Barcode:</b> ${productName.substringAfter("Product: ")}").append("<br><br>")
+                } else {
+                    metadataText.append("<b>Product:</b> ${productName}").append("<br><br>")
+                }
+            }
+            
+            if (description.isNotEmpty()) {
+                metadataText.append("<b>Description:</b> ${description}").append("<br><br>")
+            }
+            
+            if (url.isNotEmpty()) {
+                metadataText.append("<b>URL:</b> ${url}").append("<br><br>")
+            }
+            
+            if (email.isNotEmpty()) {
+                metadataText.append("<b>Email:</b> ${email}").append("<br><br>")
+            }
+            
+            if (phone.isNotEmpty()) {
+                metadataText.append("<b>Phone:</b> ${phone}").append("<br><br>")
+            }
+            
+            if (smsContent.isNotEmpty()) {
+                metadataText.append("<b>SMS:</b> ${smsContent}").append("<br><br>")
+            }
+            
+            if (wifiSsid.isNotEmpty()) {
+                metadataText.append("<b>WiFi SSID:</b> ${wifiSsid}")
+                if (wifiPassword.isNotEmpty()) {
+                    metadataText.append("<br><b>Password:</b> ${wifiPassword}")
+                }
+                if (wifiType.isNotEmpty()) {
+                    metadataText.append("<br><b>Type:</b> ${wifiType}")
+                }
+                metadataText.append("<br><br>")
+            }
+            
+            if (contactInfo.isNotEmpty()) {
+                metadataText.append("<b>Contact Info:</b><br>${contactInfo.replace("\n", "<br>")}").append("<br><br>")
+            }
+            
+            if (geoLat != 0.0 && geoLng != 0.0) {
+                metadataText.append("<b>Location:</b> ${geoLat}, ${geoLng}").append("<br><br>")
+            }
+            
+            // Set description text or hide if none
+            if (metadataText.isNotEmpty()) {
+                descriptionView.text = Html.fromHtml(metadataText.toString().trim(), Html.FROM_HTML_MODE_COMPACT)
+                descriptionView.visibility = View.VISIBLE
+            } else {
+                descriptionView.visibility = View.GONE
+            }
             
             // Set button listeners
             cancelButton.setOnClickListener {
@@ -196,7 +294,8 @@ class GalleryFragment : Fragment() {
                     geoLat = geoLat,
                     geoLng = geoLng,
                     productName = productName,
-                    contactInfo = contactInfo
+                    contactInfo = contactInfo,
+                    productImageUrl = productImageUrl
                 )
                 saveBarcodesToSharedPreferences()
                 Toast.makeText(ctx, "Barcode saved to gallery", Toast.LENGTH_SHORT).show()
@@ -208,12 +307,25 @@ class GalleryFragment : Fragment() {
     }
     
     private fun setupRecyclerView() {
-        barcodeAdapter = BarcodeAdapter { barcode ->
-            showBarcodeDisplayDialog(barcode)
+        barcodeAdapter = BarcodeAdapter { barcode, position ->
+            showBarcodeDisplayDialog(barcode, position)
         }
         binding.recyclerViewBarcodes.apply {
             layoutManager = LinearLayoutManager(context)
             adapter = barcodeAdapter
+            
+            // Add spacing between items
+            addItemDecoration(object : RecyclerView.ItemDecoration() {
+                override fun getItemOffsets(
+                    outRect: Rect,
+                    view: View,
+                    parent: RecyclerView,
+                    state: RecyclerView.State
+                ) {
+                    // Add bottom margin to each item
+                    outRect.bottom = resources.getDimensionPixelSize(R.dimen.barcode_item_spacing)
+                }
+            })
         }
         
         // Add swipe-to-delete functionality
@@ -385,7 +497,7 @@ class GalleryFragment : Fragment() {
         }
     }
 
-    private fun showBarcodeDisplayDialog(barcode: BarcodeData) {
+    private fun showBarcodeDisplayDialog(barcode: BarcodeData, position: Int) {
         context?.let { ctx ->
             // Create a custom dialog
             val dialog = Dialog(ctx)
@@ -403,19 +515,28 @@ class GalleryFragment : Fragment() {
             val valueTextView = dialog.findViewById<TextView>(R.id.barcode_value)
             val formatTextView = dialog.findViewById<TextView>(R.id.barcode_format)
             val barcodeImageView = dialog.findViewById<ImageView>(R.id.barcode_image)
+            val productImageView = dialog.findViewById<ImageView>(R.id.product_image)
             val descriptionView = dialog.findViewById<TextView>(R.id.barcode_description)
             val closeButton = dialog.findViewById<Button>(R.id.btn_close)
+            val editTitleButton = dialog.findViewById<Button>(R.id.btn_edit_title)
             
-            // Set barcode information
-            if (barcode.title.isNotEmpty()) {
-                titleTextView.text = barcode.title
-            } else if (barcode.productName.isNotEmpty()) {
-                titleTextView.text = barcode.productName
-            } else if (barcode.url.isNotEmpty()) {
-                titleTextView.text = "URL Barcode"
-            } else {
-                titleTextView.text = "Barcode Display"
+            // Set informative title based on content
+            val title = when {
+                barcode.productName.isNotEmpty() && !barcode.productName.startsWith("Product:") -> barcode.productName
+                barcode.title.isNotEmpty() -> barcode.title
+                barcode.url.isNotEmpty() -> "URL Barcode"
+                barcode.email.isNotEmpty() -> "Email Barcode"
+                barcode.phone.isNotEmpty() -> "Phone Barcode"
+                barcode.wifiSsid.isNotEmpty() -> "WiFi Network"
+                barcode.contactInfo.isNotEmpty() -> "Contact Information"
+                barcode.geoLat != 0.0 && barcode.geoLng != 0.0 -> "Location"
+                else -> "Barcode Display"
             }
+            titleTextView.text = title
+            
+            // Show/hide edit title button based on whether a custom title can be useful
+            val needsCustomTitle = barcode.productName.isEmpty() || barcode.productName.startsWith("Product:")
+            editTitleButton.visibility = if (needsCustomTitle) View.VISIBLE else View.GONE
             
             valueTextView.text = barcode.value
             
@@ -429,6 +550,15 @@ class GalleryFragment : Fragment() {
             
             formatTextView.text = formatText.toString()
             
+            // Show product image if available
+            if (barcode.productImageUrl.isNotEmpty()) {
+                productImageView.visibility = View.VISIBLE
+                // You would use a library like Glide or Picasso here to load the image:
+                // Glide.with(this).load(barcode.productImageUrl).into(productImageView)
+            } else {
+                productImageView.visibility = View.GONE
+            }
+            
             // Generate and display the barcode
             generateBarcodeImage(barcode.value, barcode.format, barcodeImageView)
             
@@ -439,52 +569,124 @@ class GalleryFragment : Fragment() {
                 barcodeImageView.layoutParams = barcodeImageView.layoutParams
             }
             
-            // Show additional metadata if available
+            // Show all available metadata in a formatted way
             val metadataText = StringBuilder()
             
+            if (barcode.productName.isNotEmpty() && !title.equals(barcode.productName)) {
+                if (barcode.productName.startsWith("Product:")) {
+                    metadataText.append("<b>Barcode:</b> ${barcode.productName.substringAfter("Product: ")}").append("<br><br>")
+                } else {
+                    metadataText.append("<b>Product:</b> ${barcode.productName}").append("<br><br>")
+                }
+            }
+
             if (barcode.description.isNotEmpty()) {
-                metadataText.append(barcode.description).append("\n\n")
+                metadataText.append("<b>Description:</b> ${barcode.description}").append("<br><br>")
             }
             
             if (barcode.url.isNotEmpty()) {
-                metadataText.append("URL: ${barcode.url}").append("\n\n")
+                metadataText.append("<b>URL:</b> ${barcode.url}").append("<br><br>")
             }
             
             if (barcode.email.isNotEmpty()) {
-                metadataText.append("Email: ${barcode.email}").append("\n\n")
+                metadataText.append("<b>Email:</b> ${barcode.email}").append("<br><br>")
             }
             
             if (barcode.phone.isNotEmpty()) {
-                metadataText.append("Phone: ${barcode.phone}").append("\n\n")
+                metadataText.append("<b>Phone:</b> ${barcode.phone}").append("<br><br>")
+            }
+            
+            if (barcode.smsContent.isNotEmpty()) {
+                metadataText.append("<b>SMS:</b> ${barcode.smsContent}").append("<br><br>")
             }
             
             if (barcode.wifiSsid.isNotEmpty()) {
-                metadataText.append("WiFi: ${barcode.wifiSsid}")
+                metadataText.append("<b>WiFi SSID:</b> ${barcode.wifiSsid}")
                 if (barcode.wifiPassword.isNotEmpty()) {
-                    metadataText.append(", Password: ${barcode.wifiPassword}")
+                    metadataText.append("<br><b>Password:</b> ${barcode.wifiPassword}")
                 }
-                metadataText.append("\n\n")
+                if (barcode.wifiType.isNotEmpty()) {
+                    metadataText.append("<br><b>Type:</b> ${barcode.wifiType}")
+                }
+                metadataText.append("<br><br>")
             }
             
             if (barcode.contactInfo.isNotEmpty()) {
-                metadataText.append(barcode.contactInfo).append("\n\n")
+                metadataText.append("<b>Contact Info:</b><br>${barcode.contactInfo.replace("\n", "<br>")}").append("<br><br>")
             }
             
             if (barcode.geoLat != 0.0 && barcode.geoLng != 0.0) {
-                metadataText.append("Location: ${barcode.geoLat}, ${barcode.geoLng}").append("\n\n")
+                metadataText.append("<b>Location:</b> ${barcode.geoLat}, ${barcode.geoLng}").append("<br><br>")
             }
             
             // Set description text or hide if none
             if (metadataText.isNotEmpty()) {
-                descriptionView.text = metadataText.toString().trim()
+                descriptionView.text = Html.fromHtml(metadataText.toString().trim(), Html.FROM_HTML_MODE_COMPACT)
                 descriptionView.visibility = View.VISIBLE
             } else {
                 descriptionView.visibility = View.GONE
             }
             
-            // Set button listener
+            // Set button listeners
             closeButton.setOnClickListener {
                 dialog.dismiss()
+            }
+            
+            editTitleButton.setOnClickListener {
+                dialog.dismiss()
+                showEditTitleDialog(barcode, position)
+            }
+            
+            dialog.show()
+        }
+    }
+    
+    private fun showEditTitleDialog(barcode: BarcodeData, position: Int) {
+        context?.let { ctx ->
+            // Create a custom dialog
+            val dialog = Dialog(ctx)
+            dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
+            dialog.setContentView(R.layout.dialog_edit_barcode_title)
+            
+            // Make dialog background transparent to show rounded corners
+            dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+            
+            // Set up dialog views
+            val editTitleField = dialog.findViewById<EditText>(R.id.edit_title)
+            val valueTextView = dialog.findViewById<TextView>(R.id.barcode_value)
+            val formatTextView = dialog.findViewById<TextView>(R.id.barcode_format)
+            val cancelButton = dialog.findViewById<Button>(R.id.btn_cancel)
+            val saveButton = dialog.findViewById<Button>(R.id.btn_save)
+            
+            // Pre-fill with existing title if any
+            editTitleField.setText(barcode.title)
+            
+            // Set barcode information
+            valueTextView.text = barcode.value
+            formatTextView.text = "Format: ${barcode.format}"
+            
+            // Set button listeners
+            cancelButton.setOnClickListener {
+                dialog.dismiss()
+            }
+            
+            saveButton.setOnClickListener {
+                val newTitle = editTitleField.text.toString().trim()
+                if (newTitle.isNotEmpty()) {
+                    // Update the barcode title
+                    if (galleryViewModel.updateBarcodeTitle(position, newTitle)) {
+                        // Save the updated barcode data
+                        saveBarcodesToSharedPreferences()
+                        Toast.makeText(ctx, "Title updated", Toast.LENGTH_SHORT).show()
+                    }
+                } else {
+                    Toast.makeText(ctx, "Title cannot be empty", Toast.LENGTH_SHORT).show()
+                    return@setOnClickListener
+                }
+                dialog.dismiss()
+                
+                // Show the display dialog again with updated information
+                showBarcodeDisplayDialog(galleryViewModel.barcodes.value!![position], position)
             }
             
             dialog.show()
