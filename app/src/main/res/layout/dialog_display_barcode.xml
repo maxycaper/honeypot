@@ -99,7 +99,7 @@
                 android:orientation="horizontal">
 
                 <Button
-                    android:id="@+id/btn_edit_title"
+                    android:id="@+id/btn_display_edit_title"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_marginEnd="8dp"
@@ -109,7 +109,7 @@
                     android:textColor="@color/white" />
 
                 <Button
-                    android:id="@+id/btn_close"
+                    android:id="@+id/btn_display_close"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_marginStart="8dp"

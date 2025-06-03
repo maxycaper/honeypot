@@ -163,8 +163,8 @@ class GalleryFragment : Fragment() {
             val formatTextView = dialog.findViewById<TextView>(R.id.barcode_format)
             val descriptionView = dialog.findViewById<TextView>(R.id.barcode_description)
             val productImageView = dialog.findViewById<ImageView>(R.id.product_image)
-            val cancelButton = dialog.findViewById<Button>(R.id.btn_cancel)
-            val saveButton = dialog.findViewById<Button>(R.id.btn_save)
+            val cancelButton = dialog.findViewById<Button>(R.id.btn_barcode_cancel)
+            val saveButton = dialog.findViewById<Button>(R.id.btn_barcode_save)
             
             // Set informative title based on content
             val dialogTitleText = when {
@@ -455,8 +455,8 @@ class GalleryFragment : Fragment() {
             val titleTextView = dialog.findViewById<TextView>(R.id.dialog_title)
             val valueTextView = dialog.findViewById<TextView>(R.id.barcode_value)
             val formatTextView = dialog.findViewById<TextView>(R.id.barcode_format)
-            val cancelButton = dialog.findViewById<Button>(R.id.btn_cancel)
-            val saveButton = dialog.findViewById<Button>(R.id.btn_save)
+            val cancelButton = dialog.findViewById<Button>(R.id.btn_barcode_cancel)
+            val saveButton = dialog.findViewById<Button>(R.id.btn_barcode_save)
             
             // Customize dialog for deletion
             titleTextView.text = "Delete Barcode?"
@@ -517,8 +517,8 @@ class GalleryFragment : Fragment() {
             val barcodeImageView = dialog.findViewById<ImageView>(R.id.barcode_image)
             val productImageView = dialog.findViewById<ImageView>(R.id.product_image)
             val descriptionView = dialog.findViewById<TextView>(R.id.barcode_description)
-            val closeButton = dialog.findViewById<Button>(R.id.btn_close)
-            val editTitleButton = dialog.findViewById<Button>(R.id.btn_edit_title)
+            val closeButton = dialog.findViewById<Button>(R.id.btn_display_close)
+            val editTitleButton = dialog.findViewById<Button>(R.id.btn_display_edit_title)
             
             // Set informative title based on content
             val title = when {
@@ -655,8 +655,8 @@ class GalleryFragment : Fragment() {
             val editTitleField = dialog.findViewById<EditText>(R.id.edit_title)
             val valueTextView = dialog.findViewById<TextView>(R.id.barcode_value)
             val formatTextView = dialog.findViewById<TextView>(R.id.barcode_format)
-            val cancelButton = dialog.findViewById<Button>(R.id.btn_cancel)
-            val saveButton = dialog.findViewById<Button>(R.id.btn_save)
+            val cancelButton = dialog.findViewById<Button>(R.id.btn_edit_title_cancel)
+            val saveButton = dialog.findViewById<Button>(R.id.btn_edit_title_save)
             
             // Pre-fill with existing title if any
             editTitleField.setText(barcode.title)

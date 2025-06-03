@@ -169,8 +169,8 @@ class MainActivity : AppCompatActivity() {
         // Get references to dialog views
         val titleTextView = dialog.findViewById<TextView>(R.id.dialog_title)
         val messageTextView = dialog.findViewById<TextView>(R.id.dialog_message)
-        val cancelButton = dialog.findViewById<Button>(R.id.btn_cancel)
-        val deleteButton = dialog.findViewById<Button>(R.id.btn_delete)
+        val cancelButton = dialog.findViewById<Button>(R.id.btn_delete_gallery_cancel)
+        val deleteButton = dialog.findViewById<Button>(R.id.btn_delete_gallery_confirm)
         
         // Set dialog text
         titleTextView.text = "Delete Gallery"
@@ -247,8 +247,8 @@ class MainActivity : AppCompatActivity() {
         
         // Get references to dialog views
         val input = dialog.findViewById<EditText>(R.id.edit_gallery_name)
-        val cancelButton = dialog.findViewById<Button>(R.id.btn_cancel)
-        val createButton = dialog.findViewById<Button>(R.id.btn_create)
+        val cancelButton = dialog.findViewById<Button>(R.id.btn_create_gallery_cancel)
+        val createButton = dialog.findViewById<Button>(R.id.btn_create_gallery_confirm)
         
         // Set click listeners
         cancelButton.setOnClickListener {

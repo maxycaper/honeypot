@@ -63,24 +63,36 @@
             android:orientation="horizontal">
 
             <Button
-                android:id="@+id/btn_cancel"
+                android:id="@+id/btn_edit_title_cancel"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_marginEnd="8dp"
                 android:layout_weight="1"
                 android:background="@drawable/button_gradient"
                 android:text="Cancel"
-                android:textColor="@color/white" />
+                android:textColor="@color/white"
+                android:textSize="14sp"
+                android:singleLine="true"
+                android:ellipsize="none"
+                android:minWidth="80dp"
+                android:paddingHorizontal="12dp"
+                android:paddingVertical="12dp" />
 
             <Button
-                android:id="@+id/btn_save"
+                android:id="@+id/btn_edit_title_save"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="8dp"
                 android:layout_weight="1"
                 android:background="@drawable/button_gradient"
                 android:text="Save"
-                android:textColor="@color/white" />
+                android:textColor="@color/white"
+                android:textSize="14sp"
+                android:singleLine="true"
+                android:ellipsize="none"
+                android:minWidth="80dp"
+                android:paddingHorizontal="12dp"
+                android:paddingVertical="12dp" />
 
         </LinearLayout>
 
