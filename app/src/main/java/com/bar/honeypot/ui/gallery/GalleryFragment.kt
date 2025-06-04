@@ -21,9 +21,11 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.view.Window
+import android.widget.ArrayAdapter
 import android.widget.Button
 import android.widget.EditText
 import android.widget.ImageView
+import android.widget.Spinner
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
@@ -114,6 +116,11 @@ class GalleryFragment : Fragment() {
         // Set up the scanner FAB click listener
         binding.fabScanner.setOnClickListener {
             checkCameraPermissionAndScan()
+        }
+        
+        // Set up the manual entry FAB click listener
+        binding.fabManualEntry.setOnClickListener {
+            showManualBarcodeEntryDialog()
         }
         
         // Set up the RecyclerView
@@ -300,6 +307,88 @@ class GalleryFragment : Fragment() {
                 saveBarcodesToSharedPreferences()
                 Toast.makeText(ctx, "Barcode saved to gallery", Toast.LENGTH_SHORT).show()
                 dialog.dismiss()
+            }
+            
+            dialog.show()
+        }
+    }
+    
+    private fun showManualBarcodeEntryDialog() {
+        context?.let { ctx ->
+            // Create a custom dialog
+            val dialog = Dialog(ctx)
+            dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
+            dialog.setContentView(R.layout.dialog_manual_barcode_entry)
+            
+            // Make dialog background transparent to show rounded corners
+            dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+            
+            // Set up dialog views
+            val barcodeValueField = dialog.findViewById<EditText>(R.id.edit_barcode_value)
+            val barcodeFormatSpinner = dialog.findViewById<Spinner>(R.id.spinner_barcode_format)
+            val barcodeTitleField = dialog.findViewById<EditText>(R.id.edit_barcode_title)
+            val cancelButton = dialog.findViewById<Button>(R.id.btn_manual_entry_cancel)
+            val addButton = dialog.findViewById<Button>(R.id.btn_manual_entry_add)
+            
+            // Set up the format spinner
+            val barcodeFormats = arrayOf(
+                "QR_CODE",
+                "CODE_128", 
+                "CODE_39",
+                "CODE_93",
+                "EAN_13",
+                "EAN_8",
+                "UPC_A",
+                "UPC_E",
+                "DATA_MATRIX",
+                "AZTEC",
+                "PDF417",
+                "CODABAR",
+                "ITF"
+            )
+            
+            val adapter = ArrayAdapter(ctx, android.R.layout.simple_spinner_item, barcodeFormats)
+            adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+            barcodeFormatSpinner.adapter = adapter
+            
+            // Set QR_CODE as default (position 0)
+            barcodeFormatSpinner.setSelection(0)
+            
+            // Set button listeners
+            cancelButton.setOnClickListener {
+                dialog.dismiss()
+            }
+            
+            addButton.setOnClickListener {
+                val barcodeValue = barcodeValueField.text.toString().trim()
+                val barcodeFormat = barcodeFormatSpinner.selectedItem.toString()
+                val barcodeTitle = barcodeTitleField.text.toString().trim()
+                
+                if (barcodeValue.isEmpty()) {
+                    Toast.makeText(ctx, "Please enter a barcode value", Toast.LENGTH_SHORT).show()
+                    return@setOnClickListener
+                }
+                
+                // Check if this barcode already exists in the gallery
+                if (galleryViewModel.isDuplicateBarcode(barcodeValue)) {
+                    Toast.makeText(ctx, "This barcode already exists in '${galleryViewModel.currentGalleryName.value}'", Toast.LENGTH_LONG).show()
+                    return@setOnClickListener
+                }
+                
+                // Add the barcode manually
+                val added = galleryViewModel.addBarcode(
+                    value = barcodeValue,
+                    format = barcodeFormat,
+                    title = barcodeTitle
+                )
+                
+                if (added) {
+                    saveBarcodesToSharedPreferences()
+                    Toast.makeText(ctx, "Barcode added to gallery", Toast.LENGTH_SHORT).show()
+                    dialog.dismiss()
+                } else {
+                    Toast.makeText(ctx, "Failed to add barcode", Toast.LENGTH_SHORT).show()
+                }
             }
             
             dialog.show()

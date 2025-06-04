@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_margin="16dp"
+    app:cardBackgroundColor="@color/surface_dark"
+    app:cardCornerRadius="16dp"
+    app:cardElevation="4dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="24dp"
+        android:background="@color/surface_dark">
+
+        <TextView
+            android:id="@+id/dialog_title"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:fontFamily="@font/lora"
+            android:gravity="center"
+            android:text="Add Barcode Manually"
+            android:textColor="@color/neon_purple"
+            android:textSize="22sp"
+            android:textStyle="bold" />
+
+        <EditText
+            android:id="@+id/edit_barcode_value"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:background="@color/card_background"
+            android:hint="Enter barcode value"
+            android:inputType="textNoSuggestions"
+            android:padding="16dp"
+            android:textColor="@color/text_primary"
+            android:textColorHint="@color/text_secondary"
+            android:maxLines="3"
+            android:scrollHorizontally="true" />
+
+        <Spinner
+            android:id="@+id/spinner_barcode_format"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:layout_marginTop="16dp"
+            android:background="@color/card_background"
+            android:padding="12dp" />
+
+        <EditText
+            android:id="@+id/edit_barcode_title"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:background="@color/card_background"
+            android:hint="Enter title (optional)"
+            android:inputType="textCapSentences"
+            android:padding="16dp"
+            android:textColor="@color/text_primary"
+            android:textColorHint="@color/text_secondary" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="Choose a format for your barcode. QR Code is recommended for text and URLs."
+            android:textColor="@color/text_secondary"
+            android:textSize="12sp"
+            android:gravity="center" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:orientation="horizontal">
+
+            <Button
+                android:id="@+id/btn_manual_entry_cancel"
+                android:layout_width="0dp"
+                android:layout_height="64dp"
+                android:layout_marginEnd="12dp"
+                android:layout_weight="1"
+                android:background="@drawable/button_gradient"
+                android:text="Cancel"
+                android:textColor="@color/white"
+                android:textSize="16sp"
+                android:singleLine="true"
+                android:ellipsize="none"
+                android:minWidth="100dp"
+                android:paddingHorizontal="16dp"
+                android:paddingVertical="8dp"
+                android:gravity="center" />
+
+            <Button
+                android:id="@+id/btn_manual_entry_add"
+                android:layout_width="0dp"
+                android:layout_height="64dp"
+                android:layout_marginStart="12dp"
+                android:layout_weight="1"
+                android:background="@drawable/button_gradient"
+                android:text="Add Barcode"
+                android:textColor="@color/white"
+                android:textSize="16sp"
+                android:singleLine="true"
+                android:ellipsize="none"
+                android:minWidth="100dp"
+                android:paddingHorizontal="16dp"
+                android:paddingVertical="8dp"
+                android:gravity="center" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+</androidx.cardview.widget.CardView> 
