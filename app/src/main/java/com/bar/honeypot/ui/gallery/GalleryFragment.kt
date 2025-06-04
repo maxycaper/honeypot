@@ -113,14 +113,9 @@ class GalleryFragment : Fragment() {
         // Set the gallery name in the toolbar title
         (activity as? AppCompatActivity)?.supportActionBar?.title = galleryName
         
-        // Set up the scanner FAB click listener
-        binding.fabScanner.setOnClickListener {
-            checkCameraPermissionAndScan()
-        }
-        
-        // Set up the manual entry FAB click listener
-        binding.fabManualEntry.setOnClickListener {
-            showManualBarcodeEntryDialog()
+        // Set up the unified add barcode FAB click listener
+        binding.fabAddBarcode.setOnClickListener {
+            showBarcodeActionChoiceDialog()
         }
         
         // Set up the RecyclerView
@@ -306,6 +301,40 @@ class GalleryFragment : Fragment() {
                 )
                 saveBarcodesToSharedPreferences()
                 Toast.makeText(ctx, "Barcode saved to gallery", Toast.LENGTH_SHORT).show()
+                dialog.dismiss()
+            }
+            
+            dialog.show()
+        }
+    }
+    
+    private fun showBarcodeActionChoiceDialog() {
+        context?.let { ctx ->
+            // Create a custom dialog
+            val dialog = Dialog(ctx)
+            dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
+            dialog.setContentView(R.layout.dialog_barcode_action_choice)
+            
+            // Make dialog background transparent to show rounded corners
+            dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+            
+            // Set up dialog views
+            val scanOption = dialog.findViewById<View>(R.id.option_scan)
+            val manualOption = dialog.findViewById<View>(R.id.option_manual)
+            val cancelButton = dialog.findViewById<Button>(R.id.btn_cancel)
+            
+            // Set click listeners
+            scanOption.setOnClickListener {
+                dialog.dismiss()
+                checkCameraPermissionAndScan()
+            }
+            
+            manualOption.setOnClickListener {
+                dialog.dismiss()
+                showManualBarcodeEntryDialog()
+            }
+            
+            cancelButton.setOnClickListener {
                 dialog.dismiss()
             }
             

@@ -24,7 +24,7 @@
         android:id="@+id/emptyView"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="No barcodes scanned yet\nTap the camera to scan or + to add manually"
+        android:text="No barcodes yet\nTap the + button to add a barcode"
         android:textColor="@color/text_secondary"
         android:textSize="16sp"
         android:gravity="center"
@@ -34,67 +34,19 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
-    <!-- Manual Entry FAB -->
+    <!-- Unified Add Barcode FAB -->
     <com.google.android.material.floatingactionbutton.FloatingActionButton
-        android:id="@+id/fab_manual_entry"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginEnd="16dp"
-        android:layout_marginBottom="88dp"
-        android:contentDescription="Add manually"
-        app:backgroundTint="@color/secondary"
-        app:tint="@color/white"
-        app:elevation="8dp"
-        app:fabSize="mini"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:srcCompat="@android:drawable/ic_input_add" />
-
-    <!-- Scanner FAB -->
-    <com.google.android.material.floatingactionbutton.FloatingActionButton
-        android:id="@+id/fab_scanner"
+        android:id="@+id/fab_add_barcode"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginEnd="16dp"
         android:layout_marginBottom="16dp"
-        android:contentDescription="Scanner"
+        android:contentDescription="Add barcode"
         app:backgroundTint="@color/primary"
         app:tint="@color/white"
         app:elevation="8dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:srcCompat="@android:drawable/ic_menu_camera" />
-
-    <!-- Label for manual entry -->
-    <TextView
-        android:id="@+id/label_manual_entry"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginEnd="8dp"
-        android:background="@drawable/rounded_dialog_background"
-        android:text="Add manually"
-        android:textColor="@color/white"
-        android:textSize="12sp"
-        android:padding="8dp"
-        android:visibility="gone"
-        app:layout_constraintBottom_toBottomOf="@id/fab_manual_entry"
-        app:layout_constraintEnd_toStartOf="@id/fab_manual_entry"
-        app:layout_constraintTop_toTopOf="@id/fab_manual_entry" />
-
-    <!-- Label for scanner -->
-    <TextView
-        android:id="@+id/label_scanner"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginEnd="8dp"
-        android:background="@drawable/rounded_dialog_background"
-        android:text="Scan barcode"
-        android:textColor="@color/white"
-        android:textSize="12sp"
-        android:padding="8dp"
-        android:visibility="gone"
-        app:layout_constraintBottom_toBottomOf="@id/fab_scanner"
-        app:layout_constraintEnd_toStartOf="@id/fab_scanner"
-        app:layout_constraintTop_toTopOf="@id/fab_scanner" />
+        app:srcCompat="@android:drawable/ic_input_add" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

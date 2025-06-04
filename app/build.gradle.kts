@@ -11,8 +11,8 @@ android {
         applicationId = "com.bar.honeypot"
         minSdk = 29
         targetSdk = 35
-        versionCode = 250510
-        versionName = "25.05.10"
+        versionCode = 250511
+        versionName = "25.05.11"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
