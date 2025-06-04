@@ -1,16 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Neon color palette with pink/purple focus -->
-    <color name="neon_pink">#FF00FF</color>
-    <color name="neon_hot_pink">#FF6BCB</color>
-    <color name="neon_magenta">#FF00CC</color>
-    <color name="neon_purple">#7A3CB5</color>
-    <color name="neon_violet">#9400D3</color>
-    <color name="neon_indigo">#8A2BE2</color>
-    <color name="neon_blue">#00FFFF</color>
-    <color name="neon_green">#39FF14</color>
-    <color name="neon_yellow">#FFFF00</color>
-    <color name="neon_orange">#FF9933</color>
+    <!-- Main color theme - Focused neon palette (brighter version) -->
+    <color name="primary">#A952F0</color>           <!-- Brighter neon purple as primary -->
+    <color name="primary_variant">#B347FF</color>   <!-- Brighter darker variant -->
+    <color name="secondary">#FF47E1</color>         <!-- Brighter neon magenta as secondary -->
+    <color name="accent">#5CFFFF</color>            <!-- Brighter neon blue as accent -->
+    
+    <!-- Neon color palette kept for specific uses (brighter version) -->
+    <color name="neon_pink">#FF5CFF</color>         <!-- Brighter pink -->
+    <color name="neon_hot_pink">#FF8BD5</color>     <!-- Brighter hot pink -->
+    <color name="neon_magenta">#FF47E1</color>      <!-- Brighter magenta -->
+    <color name="neon_purple">#A952F0</color>       <!-- Brighter purple -->
+    <color name="neon_violet">#B347FF</color>       <!-- Brighter violet -->
+    <color name="neon_indigo">#A15EFF</color>       <!-- Brighter indigo -->
+    <color name="neon_blue">#5CFFFF</color>         <!-- Brighter blue -->
+    <color name="neon_green">#7AFF5C</color>        <!-- Brighter green -->
+    <color name="neon_yellow">#FFFF7A</color>       <!-- Brighter yellow -->
+    <color name="neon_orange">#FFAD5C</color>       <!-- Brighter orange -->
     
     <!-- Original colors kept for backward compatibility -->
     <color name="purple_200">#FFBB86FC</color>
@@ -24,8 +30,8 @@
     <!-- Enhanced UI color palette -->
     <color name="background_dark">#121212</color>
     <color name="surface_dark">#1E1E1E</color>
-    <color name="card_background">#2A2A2A</color>
-    <color name="text_primary">#E0E0E0</color>
-    <color name="text_secondary">#B0B0B0</color>
-    <color name="divider">#383838</color>
+    <color name="card_background">#242424</color>    <!-- Matching item_barcode.xml -->
+    <color name="text_primary">#FFFFFF</color>      <!-- Maximum contrast for text -->
+    <color name="text_secondary">#D0D0D0</color>    <!-- Brighter secondary text -->
+    <color name="divider">#484848</color>           <!-- Slightly lighter divider -->
 </resources>

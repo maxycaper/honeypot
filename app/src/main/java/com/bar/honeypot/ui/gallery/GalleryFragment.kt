@@ -21,9 +21,11 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.view.Window
+import android.widget.ArrayAdapter
 import android.widget.Button
 import android.widget.EditText
 import android.widget.ImageView
+import android.widget.Spinner
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
@@ -111,9 +113,9 @@ class GalleryFragment : Fragment() {
         // Set the gallery name in the toolbar title
         (activity as? AppCompatActivity)?.supportActionBar?.title = galleryName
         
-        // Set up the scanner FAB click listener
-        binding.fabScanner.setOnClickListener {
-            checkCameraPermissionAndScan()
+        // Set up the unified add barcode FAB click listener
+        binding.fabAddBarcode.setOnClickListener {
+            showBarcodeActionChoiceDialog()
         }
         
         // Set up the RecyclerView
@@ -163,8 +165,8 @@ class GalleryFragment : Fragment() {
             val formatTextView = dialog.findViewById<TextView>(R.id.barcode_format)
             val descriptionView = dialog.findViewById<TextView>(R.id.barcode_description)
             val productImageView = dialog.findViewById<ImageView>(R.id.product_image)
-            val cancelButton = dialog.findViewById<Button>(R.id.btn_cancel)
-            val saveButton = dialog.findViewById<Button>(R.id.btn_save)
+            val cancelButton = dialog.findViewById<Button>(R.id.btn_barcode_cancel)
+            val saveButton = dialog.findViewById<Button>(R.id.btn_barcode_save)
             
             // Set informative title based on content
             val dialogTitleText = when {
@@ -300,6 +302,122 @@ class GalleryFragment : Fragment() {
                 saveBarcodesToSharedPreferences()
                 Toast.makeText(ctx, "Barcode saved to gallery", Toast.LENGTH_SHORT).show()
                 dialog.dismiss()
+            }
+            
+            dialog.show()
+        }
+    }
+    
+    private fun showBarcodeActionChoiceDialog() {
+        context?.let { ctx ->
+            // Create a custom dialog
+            val dialog = Dialog(ctx)
+            dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
+            dialog.setContentView(R.layout.dialog_barcode_action_choice)
+            
+            // Make dialog background transparent to show rounded corners
+            dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+            
+            // Set up dialog views
+            val scanOption = dialog.findViewById<View>(R.id.option_scan)
+            val manualOption = dialog.findViewById<View>(R.id.option_manual)
+            val cancelButton = dialog.findViewById<Button>(R.id.btn_cancel)
+            
+            // Set click listeners
+            scanOption.setOnClickListener {
+                dialog.dismiss()
+                checkCameraPermissionAndScan()
+            }
+            
+            manualOption.setOnClickListener {
+                dialog.dismiss()
+                showManualBarcodeEntryDialog()
+            }
+            
+            cancelButton.setOnClickListener {
+                dialog.dismiss()
+            }
+            
+            dialog.show()
+        }
+    }
+    
+    private fun showManualBarcodeEntryDialog() {
+        context?.let { ctx ->
+            // Create a custom dialog
+            val dialog = Dialog(ctx)
+            dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
+            dialog.setContentView(R.layout.dialog_manual_barcode_entry)
+            
+            // Make dialog background transparent to show rounded corners
+            dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+            
+            // Set up dialog views
+            val barcodeValueField = dialog.findViewById<EditText>(R.id.edit_barcode_value)
+            val barcodeFormatSpinner = dialog.findViewById<Spinner>(R.id.spinner_barcode_format)
+            val barcodeTitleField = dialog.findViewById<EditText>(R.id.edit_barcode_title)
+            val cancelButton = dialog.findViewById<Button>(R.id.btn_manual_entry_cancel)
+            val addButton = dialog.findViewById<Button>(R.id.btn_manual_entry_add)
+            
+            // Set up the format spinner
+            val barcodeFormats = arrayOf(
+                "QR_CODE",
+                "CODE_128", 
+                "CODE_39",
+                "CODE_93",
+                "EAN_13",
+                "EAN_8",
+                "UPC_A",
+                "UPC_E",
+                "DATA_MATRIX",
+                "AZTEC",
+                "PDF417",
+                "CODABAR",
+                "ITF"
+            )
+            
+            val adapter = ArrayAdapter(ctx, android.R.layout.simple_spinner_item, barcodeFormats)
+            adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+            barcodeFormatSpinner.adapter = adapter
+            
+            // Set QR_CODE as default (position 0)
+            barcodeFormatSpinner.setSelection(0)
+            
+            // Set button listeners
+            cancelButton.setOnClickListener {
+                dialog.dismiss()
+            }
+            
+            addButton.setOnClickListener {
+                val barcodeValue = barcodeValueField.text.toString().trim()
+                val barcodeFormat = barcodeFormatSpinner.selectedItem.toString()
+                val barcodeTitle = barcodeTitleField.text.toString().trim()
+                
+                if (barcodeValue.isEmpty()) {
+                    Toast.makeText(ctx, "Please enter a barcode value", Toast.LENGTH_SHORT).show()
+                    return@setOnClickListener
+                }
+                
+                // Check if this barcode already exists in the gallery
+                if (galleryViewModel.isDuplicateBarcode(barcodeValue)) {
+                    Toast.makeText(ctx, "This barcode already exists in '${galleryViewModel.currentGalleryName.value}'", Toast.LENGTH_LONG).show()
+                    return@setOnClickListener
+                }
+                
+                // Add the barcode manually
+                val added = galleryViewModel.addBarcode(
+                    value = barcodeValue,
+                    format = barcodeFormat,
+                    title = barcodeTitle
+                )
+                
+                if (added) {
+                    saveBarcodesToSharedPreferences()
+                    Toast.makeText(ctx, "Barcode added to gallery", Toast.LENGTH_SHORT).show()
+                    dialog.dismiss()
+                } else {
+                    Toast.makeText(ctx, "Failed to add barcode", Toast.LENGTH_SHORT).show()
+                }
             }
             
             dialog.show()
@@ -455,8 +573,8 @@ class GalleryFragment : Fragment() {
             val titleTextView = dialog.findViewById<TextView>(R.id.dialog_title)
             val valueTextView = dialog.findViewById<TextView>(R.id.barcode_value)
             val formatTextView = dialog.findViewById<TextView>(R.id.barcode_format)
-            val cancelButton = dialog.findViewById<Button>(R.id.btn_cancel)
-            val saveButton = dialog.findViewById<Button>(R.id.btn_save)
+            val cancelButton = dialog.findViewById<Button>(R.id.btn_barcode_cancel)
+            val saveButton = dialog.findViewById<Button>(R.id.btn_barcode_save)
             
             // Customize dialog for deletion
             titleTextView.text = "Delete Barcode?"
@@ -517,8 +635,8 @@ class GalleryFragment : Fragment() {
             val barcodeImageView = dialog.findViewById<ImageView>(R.id.barcode_image)
             val productImageView = dialog.findViewById<ImageView>(R.id.product_image)
             val descriptionView = dialog.findViewById<TextView>(R.id.barcode_description)
-            val closeButton = dialog.findViewById<Button>(R.id.btn_close)
-            val editTitleButton = dialog.findViewById<Button>(R.id.btn_edit_title)
+            val closeButton = dialog.findViewById<Button>(R.id.btn_display_close)
+            val editTitleButton = dialog.findViewById<Button>(R.id.btn_display_edit_title)
             
             // Set informative title based on content
             val title = when {
@@ -655,8 +773,8 @@ class GalleryFragment : Fragment() {
             val editTitleField = dialog.findViewById<EditText>(R.id.edit_title)
             val valueTextView = dialog.findViewById<TextView>(R.id.barcode_value)
             val formatTextView = dialog.findViewById<TextView>(R.id.barcode_format)
-            val cancelButton = dialog.findViewById<Button>(R.id.btn_cancel)
-            val saveButton = dialog.findViewById<Button>(R.id.btn_save)
+            val cancelButton = dialog.findViewById<Button>(R.id.btn_edit_title_cancel)
+            val saveButton = dialog.findViewById<Button>(R.id.btn_edit_title_save)
             
             // Pre-fill with existing title if any
             editTitleField.setText(barcode.title)
