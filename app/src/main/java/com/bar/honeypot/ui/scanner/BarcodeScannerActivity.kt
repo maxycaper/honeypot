@@ -77,11 +77,12 @@ class BarcodeScannerActivity : AppCompatActivity() {
             )
         }
 
-        // Set up barcode scanner
+        // Set up barcode scanner with enhanced options for large barcodes
         val options = BarcodeScannerOptions.Builder()
             .setBarcodeFormats(
                 Barcode.FORMAT_ALL_FORMATS
             )
+            .enableAllPotentialBarcodes() // Enable detection of all potential barcodes for better large barcode scanning
             .build()
         barcodeScanner = BarcodeScanning.getClient(options)
 
@@ -103,9 +104,10 @@ class BarcodeScannerActivity : AppCompatActivity() {
                     it.setSurfaceProvider(binding.viewFinder.surfaceProvider)
                 }
 
-            // Image analysis for barcode scanning
+            // Image analysis for barcode scanning with enhanced resolution
             val imageAnalyzer = ImageAnalysis.Builder()
                 .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                .setTargetResolution(android.util.Size(1280, 720)) // Higher resolution for better large barcode detection
                 .build()
                 .also {
                     it.setAnalyzer(cameraExecutor, BarcodeAnalyzer { barcodes ->

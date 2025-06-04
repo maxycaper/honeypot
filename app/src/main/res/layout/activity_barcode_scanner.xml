@@ -13,8 +13,8 @@
 
     <View
         android:id="@+id/scan_overlay"
-        android:layout_width="240dp"
-        android:layout_height="240dp"
+        android:layout_width="320dp"
+        android:layout_height="180dp"
         android:background="@drawable/scan_area_overlay"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
@@ -28,7 +28,7 @@
         android:background="#80000000"
         android:gravity="center"
         android:padding="16dp"
-        android:text="Point camera at barcode"
+        android:text="Align barcode within the rectangle"
         android:textColor="@color/white"
         android:textSize="16sp"
         app:layout_constraintBottom_toBottomOf="parent" />
