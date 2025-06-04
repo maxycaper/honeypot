@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#E0000000"
+    android:orientation="vertical"
+    android:gravity="center"
+    android:clickable="true"
+    android:focusable="true">
+
+    <!-- Enlarged Barcode Image -->
+    <ImageView
+        android:id="@+id/enlarged_barcode_image"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_margin="16dp"
+        android:adjustViewBounds="true"
+        android:scaleType="fitCenter"
+        android:contentDescription="Enlarged barcode image" />
+
+    <!-- Instruction Text -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:text="Tap anywhere to close"
+        android:textColor="#FFFFFF"
+        android:textSize="16sp"
+        android:alpha="0.8" />
+
+</LinearLayout> 

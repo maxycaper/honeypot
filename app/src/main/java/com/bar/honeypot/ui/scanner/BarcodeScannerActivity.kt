@@ -67,7 +67,11 @@ class BarcodeScannerActivity : AppCompatActivity() {
         binding = ActivityBarcodeScannerBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        // Request camera permissions if not already granted
+        Log.i(TAG, "Barcode scanner activity started")
+
+        setupBarcodeScanner()
+
+        // Check permissions and start camera
         if (allPermissionsGranted()) {
             startCamera()
         } else {
@@ -77,75 +81,142 @@ class BarcodeScannerActivity : AppCompatActivity() {
             )
         }
 
-        // Set up barcode scanner with enhanced options for large barcodes
-        val options = BarcodeScannerOptions.Builder()
-            .setBarcodeFormats(
-                Barcode.FORMAT_ALL_FORMATS
-            )
-            .enableAllPotentialBarcodes() // Enable detection of all potential barcodes for better large barcode scanning
-            .build()
-        barcodeScanner = BarcodeScanning.getClient(options)
-
         // Set up the executor for camera operations
         cameraExecutor = Executors.newSingleThreadExecutor()
     }
 
+    private fun setupBarcodeScanner() {
+        Log.d(TAG, "Setting up barcode scanner with ALL format support")
+        
+        // Configure scanner to support ALL barcode formats
+        val options = BarcodeScannerOptions.Builder()
+            .setBarcodeFormats(Barcode.FORMAT_ALL_FORMATS)
+            .enableAllPotentialBarcodes()
+            .build()
+        
+        barcodeScanner = BarcodeScanning.getClient(options)
+        Log.d(TAG, "Barcode scanner configured successfully")
+    }
+
     private fun startCamera() {
+        Log.d(TAG, "Starting camera")
         val cameraProviderFuture = ProcessCameraProvider.getInstance(this)
 
         cameraProviderFuture.addListener({
-            // Used to bind the lifecycle of cameras to the lifecycle owner
             val cameraProvider: ProcessCameraProvider = cameraProviderFuture.get()
 
             // Preview
-            val preview = Preview.Builder()
-                .build()
-                .also {
-                    it.setSurfaceProvider(binding.viewFinder.surfaceProvider)
-                }
+            val preview = Preview.Builder().build().also {
+                it.setSurfaceProvider(binding.viewFinder.surfaceProvider)
+            }
 
-            // Image analysis for barcode scanning with enhanced resolution
+            // Image analysis for barcode scanning
             val imageAnalyzer = ImageAnalysis.Builder()
                 .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-                .setTargetResolution(android.util.Size(1280, 720)) // Higher resolution for better large barcode detection
+                .setTargetResolution(android.util.Size(1280, 720))
                 .build()
                 .also {
                     it.setAnalyzer(cameraExecutor, BarcodeAnalyzer { barcodes ->
-                        if (barcodes.isNotEmpty()) {
-                            for (barcode in barcodes) {
-                                barcode.rawValue?.let { value ->
-                                    val format = getReadableFormat(barcode.format)
-                                    Log.d(TAG, "Barcode found: $value, format: $format")
-                                    extractAndReturnBarcodeData(barcode, value, format)
-                                    return@BarcodeAnalyzer
-                                }
-                            }
-                        }
+                        processBarcodes(barcodes)
                     })
                 }
 
-            // Select back camera as a default
             val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
 
             try {
-                // Unbind use cases before rebinding
                 cameraProvider.unbindAll()
-
-                // Bind use cases to camera
-                cameraProvider.bindToLifecycle(
-                    this, cameraSelector, preview, imageAnalyzer
-                )
-
+                cameraProvider.bindToLifecycle(this, cameraSelector, preview, imageAnalyzer)
+                Log.d(TAG, "Camera started successfully")
             } catch (exc: Exception) {
-                Log.e(TAG, "Use case binding failed", exc)
+                Log.e(TAG, "Camera binding failed", exc)
             }
 
         }, ContextCompat.getMainExecutor(this))
     }
+    
+    private fun processBarcodes(barcodes: List<Barcode>) {
+        if (barcodes.isNotEmpty()) {
+            val barcode = barcodes.first()
+            barcode.rawValue?.let { value ->
+                val format = getReadableFormat(barcode.format)
+                Log.i(TAG, "Barcode detected: '$value' (Format: $format)")
+                
+                // Process the barcode immediately to avoid multiple processing
+                processDetectedBarcode(barcode, value, format)
+            }
+        }
+    }
+    
+    private fun processDetectedBarcode(barcode: Barcode, value: String, format: String) {
+        Log.d(TAG, "Processing barcode: value='$value', format='$format'")
+        
+        // Check if this is a product barcode that needs API lookup
+        if (isProductBarcode(format)) {
+            Log.d(TAG, "Product barcode detected - looking up product info")
+            lookupProductInfo(value, format) { productName, brand, imageUrl ->
+                finishWithBarcodeData(barcode, value, format, productName, brand, imageUrl)
+            }
+        } else {
+            Log.d(TAG, "Non-product barcode detected - returning data immediately")
+            finishWithBarcodeData(barcode, value, format, null, null, null)
+        }
+    }
+
+    private fun isProductBarcode(format: String): Boolean {
+        return when (format) {
+            "EAN_13", "EAN_8", "UPC_A", "UPC_E" -> true
+            "CODE_128" -> true // Many products use CODE_128
+            else -> false
+        }
+    }
+
+    private fun lookupProductInfo(
+        barcodeValue: String,
+        format: String,
+        callback: (String?, String?, String?) -> Unit
+    ) {
+        // Show loading
+        runOnUiThread {
+            binding.loadingOverlay.visibility = View.VISIBLE
+            binding.loadingText.text = "Looking up product..."
+        }
+        
+        Log.d(TAG, "Starting product lookup for: $barcodeValue")
+        
+        lifecycleScope.launch {
+            try {
+                val productInfo = BarcodeInfoService.getProductInfo(barcodeValue)
+                
+                withContext(Dispatchers.Main) {
+                    binding.loadingOverlay.visibility = View.GONE
+                }
+                
+                if (productInfo != null && (productInfo.name.isNotEmpty() || productInfo.brand.isNotEmpty())) {
+                    val finalName = when {
+                        productInfo.name.isNotEmpty() && productInfo.brand.isNotEmpty() -> 
+                            "${productInfo.brand} ${productInfo.name}"
+                        productInfo.name.isNotEmpty() -> productInfo.name
+                        productInfo.brand.isNotEmpty() -> productInfo.brand
+                        else -> null
+                    }
+                    Log.i(TAG, "Product found: '$finalName'")
+                    callback(finalName, productInfo.brand, productInfo.imageUrl)
+                } else {
+                    Log.d(TAG, "No product info found")
+                    callback(null, null, null)
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Product lookup failed: ${e.message}")
+                withContext(Dispatchers.Main) {
+                    binding.loadingOverlay.visibility = View.GONE
+                }
+                callback(null, null, null)
+            }
+        }
+    }
 
     private fun getReadableFormat(format: Int): String {
         return when (format) {
-            Barcode.FORMAT_UNKNOWN -> "Unknown"
             Barcode.FORMAT_CODE_128 -> "CODE_128"
             Barcode.FORMAT_CODE_39 -> "CODE_39"
             Barcode.FORMAT_CODE_93 -> "CODE_93"
@@ -159,254 +230,124 @@ class BarcodeScannerActivity : AppCompatActivity() {
             Barcode.FORMAT_UPC_E -> "UPC_E"
             Barcode.FORMAT_PDF417 -> "PDF417"
             Barcode.FORMAT_AZTEC -> "AZTEC"
-            else -> "Unknown format: $format"
+            else -> "UNKNOWN"
         }
     }
 
-    private fun extractAndReturnBarcodeData(barcode: Barcode, value: String, format: String) {
-        // Check if this might be a product barcode (EAN, UPC)
-        if (isProductBarcode(format)) {
-            // Use the coroutine-based approach similar to the example code
-            lookupProductInfoCoroutine(value, format) { productName, brand, imageUrl ->
-                finishWithBarcodeData(barcode, value, format, productName, brand, imageUrl)
-            }
-        } else {
-            // Not a product barcode, return data immediately
-            finishWithBarcodeData(barcode, value, format, null, null, null)
-        }
-    }
-
-    private fun isProductBarcode(format: String): Boolean {
-        return format.contains("EAN") || 
-               format.contains("UPC") || 
-               format == "UPC_A" || 
-               format == "UPC_E" || 
-               format.contains("CODE_128")
-    }
-
-    private fun lookupProductInfo(
-        barcode: String, 
-        format: String,
-        callback: (String?, String?, String?) -> Unit
-    ) {
-        // Show loading indicator
-        runOnUiThread {
-            binding.loadingOverlay.visibility = View.VISIBLE
-            binding.loadingText.text = "Looking up product..."
-        }
-
-        Log.d(TAG, "Looking up product info for barcode: $barcode")
-
-        // Make API call to get product info
-        ProductApi.service.getProductInfo(barcode).enqueue(object : Callback<ProductResponse> {
-            override fun onResponse(call: Call<ProductResponse>, response: Response<ProductResponse>) {
-                Log.d(TAG, "API Response received: ${response.isSuccessful}, code: ${response.code()}")
-                
-                // Log the raw response body if available
-                if (response.isSuccessful) {
-                    val responseBody = response.body()
-                    Log.d(TAG, "Raw response: $responseBody")
-                    
-                    val product = responseBody?.product
-                    Log.d(TAG, "Product object: $product")
-                    
-                    // Get product info - try multiple fields for name and image
-                    val rawProductName = product?.productName 
-                        ?: product?.productNameEn
-                        ?: product?.genericName
-                        ?: product?.genericNameEn
-                        
-                    val brand = product?.brands
-                    
-                    // Format the product name with brand if available (similar to the working example)
-                    val productName = if (!brand.isNullOrEmpty() && !rawProductName.isNullOrEmpty()) {
-                        "$brand $rawProductName"
-                    } else {
-                        rawProductName
-                    }
-                    
-                    val imageUrl = product?.imageUrl 
-                        ?: product?.imageFrontUrl
-                    
-                    Log.d(TAG, "Extracted data - raw product name: '$rawProductName', brand: '$brand', formatted name: '$productName', imageUrl: '$imageUrl'")
-                    
-                    // Hide loading indicator
-                    runOnUiThread {
-                        binding.loadingOverlay.visibility = View.GONE
-                    }
-                    
-                    if (productName != null && productName.isNotEmpty()) {
-                        Log.d(TAG, "Product found: $productName, brand: $brand, imageUrl: $imageUrl")
-                    } else {
-                        Log.d(TAG, "No product name found for barcode: $barcode")
-                        
-                        // Attempt fallback to any available product info
-                        val fallbackName = if (brand != null && brand.isNotEmpty()) {
-                            Log.d(TAG, "Using brand as fallback product name: $brand")
-                            brand
-                        } else {
-                            Log.d(TAG, "No fallback product info available, using default")
-                            "Product: $barcode"
-                        }
-                        
-                        // If no product name was found but we have a valid response, check the response status
-                        responseBody?.let {
-                            Log.d(TAG, "API response status: ${it.status}, message: ${it.statusVerbose}")
-                        }
-                        
-                        // Return with fallback name
-                        callback(fallbackName, brand, imageUrl)
-                        return
-                    }
-                    
-                    // Return the result
-                    callback(productName, brand, imageUrl)
-                } else {
-                    Log.e(TAG, "API request failed: ${response.code()} - ${response.message()}")
-                    
-                    // Hide loading indicator
-                    runOnUiThread {
-                        binding.loadingOverlay.visibility = View.GONE
-                    }
-                    
-                    // Return null results
-                    callback(null, null, null)
-                }
-            }
-
-            override fun onFailure(call: Call<ProductResponse>, t: Throwable) {
-                // Hide loading indicator
-                runOnUiThread {
-                    binding.loadingOverlay.visibility = View.GONE
-                }
-                
-                Log.e(TAG, "Error looking up product: ${t.message}", t)
-                // Return null results
-                callback(null, null, null)
-            }
-        })
-    }
-    
     private fun finishWithBarcodeData(
-        barcode: Barcode, 
-        value: String, 
+        barcode: Barcode,
+        value: String,
         format: String,
         productName: String?,
         brand: String?,
         imageUrl: String?
     ) {
-        Log.d(TAG, "Finishing with barcode data: value=$value, format=$format, productName=$productName, brand=$brand")
+        Log.i(TAG, "Finishing with barcode: '$value' ($format)")
         
         val resultIntent = Intent().apply {
             putExtra(BARCODE_VALUE, value)
             putExtra(BARCODE_FORMAT, format)
             
-            // Add product info if available
+            // Handle product info
             if (!productName.isNullOrEmpty()) {
                 putExtra(BARCODE_PRODUCT_NAME, productName)
-                // Use product name as title by default
                 putExtra(BARCODE_TITLE, productName)
-                Log.d(TAG, "Set product name: $productName")
-            } else if (format.contains("EAN") || format.contains("UPC") || format.contains("CODE_128")) {
-                // For product barcodes with no API result
-                val defaultName = "Product: $value"
+            } else if (isProductBarcode(format)) {
+                // Default product naming for products without API results
+                val defaultName = "$format Product: $value"
                 putExtra(BARCODE_PRODUCT_NAME, defaultName)
-                Log.d(TAG, "Set default product name: $defaultName")
+                putExtra(BARCODE_TITLE, defaultName)
             }
             
             if (!brand.isNullOrEmpty()) {
                 putExtra(BARCODE_PRODUCT_BRAND, brand)
-                // Only override title with brand if specifically desired
-                // putExtra(BARCODE_TITLE, brand)
-                Log.d(TAG, "Set product brand: $brand")
             }
             
             if (!imageUrl.isNullOrEmpty()) {
                 putExtra(BARCODE_PRODUCT_IMAGE_URL, imageUrl)
-                Log.d(TAG, "Set product image URL: $imageUrl")
             }
             
-            // Extract URL data
-            barcode.url?.let { urlInfo ->
-                urlInfo.url?.let { putExtra(BARCODE_URL, it) }
-                urlInfo.title?.let { putExtra(BARCODE_TITLE, it) }
-                if (urlInfo.url != null) {
-                    putExtra(BARCODE_DESCRIPTION, "Website link")
-                }
-            }
-            
-            // Extract email data
-            barcode.email?.let { emailInfo ->
-                emailInfo.address?.let { putExtra(BARCODE_EMAIL, it) }
-                if (emailInfo.subject?.isNotEmpty() == true || emailInfo.body?.isNotEmpty() == true) {
-                    val emailContent = StringBuilder()
-                    emailInfo.subject?.let { emailContent.append("Subject: $it\n") }
-                    emailInfo.body?.let { emailContent.append("Body: $it") }
-                    putExtra(BARCODE_DESCRIPTION, emailContent.toString())
-                }
-            }
-            
-            // Extract phone data
-            barcode.phone?.let { phoneInfo ->
-                phoneInfo.number?.let { putExtra(BARCODE_PHONE, it) }
-            }
-            
-            // Extract SMS data
-            barcode.sms?.let { smsInfo ->
-                smsInfo.phoneNumber?.let { putExtra(BARCODE_PHONE, it) }
-                smsInfo.message?.let { putExtra(BARCODE_SMS, it) }
-            }
-            
-            // Extract WiFi data
-            barcode.wifi?.let { wifiInfo ->
-                wifiInfo.ssid?.let { putExtra(BARCODE_WIFI_SSID, it) }
-                wifiInfo.password?.let { putExtra(BARCODE_WIFI_PASSWORD, it) }
-                putExtra(BARCODE_WIFI_TYPE, wifiInfo.encryptionType.toString())
-            }
-            
-            // Extract geographic coordinates
-            barcode.geoPoint?.let { geoInfo ->
-                putExtra(BARCODE_GEO_LAT, geoInfo.lat)
-                putExtra(BARCODE_GEO_LNG, geoInfo.lng)
-            }
-            
-            // Extract product information
-            barcode.calendarEvent?.let {
-                val eventInfo = StringBuilder()
-                it.summary?.let { summary -> eventInfo.append(summary) }
-                putExtra(BARCODE_TITLE, eventInfo.toString())
-            }
-            
-            // Extract contact information
-            barcode.contactInfo?.let { contactInfo ->
-                val name = contactInfo.name?.formattedName ?: "Contact"
-                putExtra(BARCODE_TITLE, name)
-                
-                val contactDetails = StringBuilder()
-                contactInfo.emails?.forEach { email ->
-                    email.address?.let { addr -> 
-                        contactDetails.append("Email: $addr\n") 
-                    }
-                }
-                contactInfo.phones?.forEach { phone ->
-                    phone.number?.let { num -> 
-                        contactDetails.append("Phone: $num\n") 
-                    }
-                }
-                contactInfo.addresses?.forEach { address ->
-                    address.addressLines?.let { lines -> 
-                        contactDetails.append("Address: ${lines.joinToString(", ")}\n") 
-                    }
-                }
-                
-                if (contactDetails.isNotEmpty()) {
-                    putExtra(BARCODE_CONTACT_INFO, contactDetails.toString().trim())
-                }
+            // Extract structured data from barcode
+            extractStructuredData(barcode, this)
+        }
+        
+        Log.i(TAG, "Barcode processing completed successfully")
+        setResult(RESULT_OK, resultIntent)
+        finish()
+    }
+    
+    private fun extractStructuredData(barcode: Barcode, intent: Intent) {
+        // URL data
+        barcode.url?.let { urlInfo ->
+            urlInfo.url?.let { intent.putExtra(BARCODE_URL, it) }
+            urlInfo.title?.let { intent.putExtra(BARCODE_TITLE, it) }
+            if (urlInfo.url != null) {
+                intent.putExtra(BARCODE_DESCRIPTION, "Website link")
             }
         }
         
-        setResult(RESULT_OK, resultIntent)
-        finish()
+        // Email data
+        barcode.email?.let { emailInfo ->
+            emailInfo.address?.let { intent.putExtra(BARCODE_EMAIL, it) }
+            val emailContent = StringBuilder()
+            emailInfo.subject?.let { emailContent.append("Subject: $it\n") }
+            emailInfo.body?.let { emailContent.append("Body: $it") }
+            if (emailContent.isNotEmpty()) {
+                intent.putExtra(BARCODE_DESCRIPTION, emailContent.toString())
+            }
+        }
+        
+        // Phone data
+        barcode.phone?.let { phoneInfo ->
+            phoneInfo.number?.let { intent.putExtra(BARCODE_PHONE, it) }
+        }
+        
+        // SMS data
+        barcode.sms?.let { smsInfo ->
+            smsInfo.phoneNumber?.let { intent.putExtra(BARCODE_PHONE, it) }
+            smsInfo.message?.let { intent.putExtra(BARCODE_SMS, it) }
+        }
+        
+        // WiFi data
+        barcode.wifi?.let { wifiInfo ->
+            wifiInfo.ssid?.let { intent.putExtra(BARCODE_WIFI_SSID, it) }
+            wifiInfo.password?.let { intent.putExtra(BARCODE_WIFI_PASSWORD, it) }
+            intent.putExtra(BARCODE_WIFI_TYPE, wifiInfo.encryptionType.toString())
+        }
+        
+        // Geographic coordinates
+        barcode.geoPoint?.let { geoInfo ->
+            intent.putExtra(BARCODE_GEO_LAT, geoInfo.lat)
+            intent.putExtra(BARCODE_GEO_LNG, geoInfo.lng)
+        }
+        
+        // Contact information
+        barcode.contactInfo?.let { contactInfo ->
+            val name = contactInfo.name?.formattedName ?: "Contact"
+            intent.putExtra(BARCODE_TITLE, name)
+            
+            val contactDetails = StringBuilder()
+            contactInfo.emails?.forEach { email ->
+                email.address?.let { contactDetails.append("Email: $it\n") }
+            }
+            contactInfo.phones?.forEach { phone ->
+                phone.number?.let { contactDetails.append("Phone: $it\n") }
+            }
+            contactInfo.addresses?.forEach { address ->
+                address.addressLines?.let { lines ->
+                    contactDetails.append("Address: ${lines.joinToString(", ")}\n")
+                }
+            }
+            
+            if (contactDetails.isNotEmpty()) {
+                intent.putExtra(BARCODE_CONTACT_INFO, contactDetails.toString().trim())
+            }
+        }
+        
+        // Calendar event
+        barcode.calendarEvent?.let { event ->
+            event.summary?.let { intent.putExtra(BARCODE_TITLE, it) }
+        }
     }
 
     private fun allPermissionsGranted() = ContextCompat.checkSelfPermission(
@@ -421,11 +362,7 @@ class BarcodeScannerActivity : AppCompatActivity() {
             if (allPermissionsGranted()) {
                 startCamera()
             } else {
-                Toast.makeText(
-                    this,
-                    "Camera permissions are required to use the scanner",
-                    Toast.LENGTH_SHORT
-                ).show()
+                Toast.makeText(this, "Camera permission is required", Toast.LENGTH_SHORT).show()
                 finish()
             }
         }
@@ -434,6 +371,7 @@ class BarcodeScannerActivity : AppCompatActivity() {
     override fun onDestroy() {
         super.onDestroy()
         cameraExecutor.shutdown()
+        Log.d(TAG, "Barcode scanner activity destroyed")
     }
 
     private inner class BarcodeAnalyzer(private val onBarcodesDetected: (List<Barcode>) -> Unit) :
@@ -462,60 +400,6 @@ class BarcodeScannerActivity : AppCompatActivity() {
                     }
             } else {
                 imageProxy.close()
-            }
-        }
-    }
-
-    private fun lookupProductInfoCoroutine(
-        barcode: String, 
-        format: String,
-        callback: (String?, String?, String?) -> Unit
-    ) {
-        // Show loading indicator
-        runOnUiThread {
-            binding.loadingOverlay.visibility = View.VISIBLE
-            binding.loadingText.text = "Looking up product..."
-        }
-
-        Log.d(TAG, "Looking up product info using coroutines for barcode: $barcode")
-        
-        lifecycleScope.launch {
-            try {
-                val productInfo = BarcodeInfoService.getProductInfo(barcode)
-                
-                // Hide loading indicator
-                withContext(Dispatchers.Main) {
-                    binding.loadingOverlay.visibility = View.GONE
-                }
-                
-                if (productInfo != null) {
-                    Log.d(TAG, "Product found: name=${productInfo.name}, brand=${productInfo.brand}, imageUrl=${productInfo.imageUrl}")
-                    
-                    // Format the product name with brand if both are available
-                    val formattedName = if (productInfo.brand.isNotEmpty() && productInfo.name.isNotEmpty()) {
-                        "${productInfo.brand} ${productInfo.name}"
-                    } else if (productInfo.name.isNotEmpty()) {
-                        productInfo.name
-                    } else if (productInfo.brand.isNotEmpty()) {
-                        productInfo.brand
-                    } else {
-                        null
-                    }
-                    
-                    callback(formattedName, productInfo.brand, productInfo.imageUrl)
-                } else {
-                    Log.d(TAG, "No product found for barcode: $barcode")
-                    callback(null, null, null)
-                }
-            } catch (e: Exception) {
-                Log.e(TAG, "Error looking up product: ${e.message}", e)
-                
-                // Hide loading indicator
-                withContext(Dispatchers.Main) {
-                    binding.loadingOverlay.visibility = View.GONE
-                }
-                
-                callback(null, null, null)
             }
         }
     }

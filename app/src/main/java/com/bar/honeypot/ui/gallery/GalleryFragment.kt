@@ -17,7 +17,9 @@ import android.graphics.drawable.ColorDrawable
 import android.os.Bundle
 import android.text.Html
 import android.util.Log
+import android.view.GestureDetector
 import android.view.LayoutInflater
+import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.view.Window
@@ -44,9 +46,14 @@ import com.google.android.material.snackbar.Snackbar
 
 class GalleryFragment : Fragment() {
 
+    companion object {
+        private const val TAG = "GalleryFragment"
+    }
+
     private var _binding: FragmentGalleryBinding? = null
     private lateinit var galleryViewModel: GalleryViewModel
     private lateinit var barcodeAdapter: BarcodeAdapter
+    private lateinit var gestureDetector: GestureDetector
 
     // This property is only valid between onCreateView and
     // onDestroyView.
@@ -56,8 +63,10 @@ class GalleryFragment : Fragment() {
         ActivityResultContracts.RequestPermission()
     ) { isGranted: Boolean ->
         if (isGranted) {
+            Log.d(TAG, "Camera permission granted")
             launchBarcodeScanner()
         } else {
+            Log.w(TAG, "Camera permission denied")
             Toast.makeText(context, "Camera permission is required to use the scanner", Toast.LENGTH_SHORT).show()
         }
     }
@@ -65,28 +74,30 @@ class GalleryFragment : Fragment() {
     private val barcodeScannerLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
+        Log.d(TAG, "Barcode scanner result received with code: ${result.resultCode}")
+        
         if (result.resultCode == Activity.RESULT_OK) {
             val data = result.data
             val barcodeValue = data?.getStringExtra(BarcodeScannerActivity.BARCODE_VALUE)
             val barcodeFormat = data?.getStringExtra(BarcodeScannerActivity.BARCODE_FORMAT)
-            val productName = data?.getStringExtra(BarcodeScannerActivity.BARCODE_PRODUCT_NAME)
-            val productBrand = data?.getStringExtra(BarcodeScannerActivity.BARCODE_PRODUCT_BRAND)
-            val productImageUrl = data?.getStringExtra(BarcodeScannerActivity.BARCODE_PRODUCT_IMAGE_URL)
-            val title = data?.getStringExtra(BarcodeScannerActivity.BARCODE_TITLE)
             
-            // Log all extras from the intent for debugging
-            Log.d("GalleryFragment", "--- Barcode Scanner Result Extras ---")
-            data?.extras?.keySet()?.forEach { key ->
-                Log.d("GalleryFragment", "Extra: $key = ${data.extras?.get(key)}")
-            }
-            
-            // Log received product information
-            Log.d("GalleryFragment", "Received barcode: $barcodeValue, format: $barcodeFormat")
-            Log.d("GalleryFragment", "Product info - name: '$productName', brand: '$productBrand', title: '$title', imageUrl: '$productImageUrl'")
+            Log.i(TAG, "Barcode scanned: '$barcodeValue' (Format: $barcodeFormat)")
             
             if (barcodeValue != null && barcodeFormat != null) {
+                // Check for duplicates
+                if (galleryViewModel.isDuplicateBarcode(barcodeValue)) {
+                    Log.w(TAG, "Duplicate barcode detected: '$barcodeValue'")
+                    Toast.makeText(context, "This barcode already exists in the gallery", Toast.LENGTH_LONG).show()
+                    return@registerForActivityResult
+                }
+                
                 showBarcodeConfirmationDialog(barcodeValue, barcodeFormat, data)
+            } else {
+                Log.e(TAG, "Invalid barcode data received")
+                Toast.makeText(context, "Error: Invalid barcode data", Toast.LENGTH_SHORT).show()
             }
+        } else {
+            Log.d(TAG, "Barcode scanner cancelled")
         }
     }
     
@@ -97,6 +108,8 @@ class GalleryFragment : Fragment() {
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
+        Log.d(TAG, "Creating gallery view")
+        
         galleryViewModel = ViewModelProvider(this).get(GalleryViewModel::class.java)
 
         _binding = FragmentGalleryBinding.inflate(inflater, container, false)
@@ -113,6 +126,9 @@ class GalleryFragment : Fragment() {
         // Set the gallery name in the toolbar title
         (activity as? AppCompatActivity)?.supportActionBar?.title = galleryName
         
+        // Set up gesture detector for double-tap
+        setupGestureDetector()
+        
         // Set up the unified add barcode FAB click listener
         binding.fabAddBarcode.setOnClickListener {
             showBarcodeActionChoiceDialog()
@@ -124,18 +140,98 @@ class GalleryFragment : Fragment() {
         // Load saved barcodes for this gallery
         loadBarcodesFromSharedPreferences()
         
+        // Update empty view text to include double-tap instruction
+        binding.emptyText.text = "No barcodes in this gallery yet.\nTap the + button to add one.\n\nTip: Double-tap any barcode to enlarge it."
+        
         return root
     }
     
-    private fun showBarcodeConfirmationDialog(barcodeValue: String, barcodeFormat: String, data: Intent) {
+    private fun setupGestureDetector() {
+        gestureDetector = GestureDetector(context, object : GestureDetector.SimpleOnGestureListener() {
+            override fun onDoubleTap(e: MotionEvent): Boolean {
+                Log.d(TAG, "Double-tap detected")
+                // Find the barcode item that was double-tapped
+                val recyclerView = binding.recyclerViewBarcodes
+                val childView = recyclerView.findChildViewUnder(e.x, e.y)
+                
+                if (childView != null) {
+                    val position = recyclerView.getChildAdapterPosition(childView)
+                    if (position != RecyclerView.NO_POSITION) {
+                        val barcode = galleryViewModel.barcodes.value?.get(position)
+                        if (barcode != null) {
+                            Log.i(TAG, "Double-tap on barcode: '${barcode.value}' (${barcode.format})")
+                            showEnlargedBarcodeDialog(barcode)
+                        }
+                    }
+                }
+                return true
+            }
+        })
+    }
+    
+    private fun showEnlargedBarcodeDialog(barcode: BarcodeData) {
         context?.let { ctx ->
-            // Check if this barcode already exists in the gallery
-            if (galleryViewModel.isDuplicateBarcode(barcodeValue)) {
-                Toast.makeText(ctx, "This barcode already exists in '${galleryViewModel.currentGalleryName.value}'", Toast.LENGTH_LONG).show()
-                return
+            Log.d(TAG, "Showing enlarged barcode dialog for: '${barcode.value}'")
+            
+            val dialog = Dialog(ctx, android.R.style.Theme_Black_NoTitleBar_Fullscreen)
+            dialog.setContentView(R.layout.dialog_enlarged_barcode)
+            
+            val enlargedImageView = dialog.findViewById<ImageView>(R.id.enlarged_barcode_image)
+            
+            // Generate high-resolution barcode
+            generateEnlargedBarcodeImage(barcode.value, barcode.format, enlargedImageView)
+            
+            // Close dialog when tapped anywhere
+            dialog.findViewById<View>(android.R.id.content).setOnClickListener {
+                Log.d(TAG, "Enlarged barcode dialog closed")
+                dialog.dismiss()
             }
             
-            // Get additional metadata from intent
+            dialog.show()
+        }
+    }
+    
+    private fun generateEnlargedBarcodeImage(value: String, format: String, imageView: ImageView) {
+        try {
+            val barcodeFormat = when (format) {
+                "QR_CODE" -> com.google.zxing.BarcodeFormat.QR_CODE
+                "CODE_128" -> com.google.zxing.BarcodeFormat.CODE_128
+                "CODE_39" -> com.google.zxing.BarcodeFormat.CODE_39
+                "CODE_93" -> com.google.zxing.BarcodeFormat.CODE_93
+                "EAN_13" -> com.google.zxing.BarcodeFormat.EAN_13
+                "EAN_8" -> com.google.zxing.BarcodeFormat.EAN_8
+                "UPC_A" -> com.google.zxing.BarcodeFormat.UPC_A
+                "UPC_E" -> com.google.zxing.BarcodeFormat.UPC_E
+                "DATA_MATRIX" -> com.google.zxing.BarcodeFormat.DATA_MATRIX
+                "AZTEC" -> com.google.zxing.BarcodeFormat.AZTEC
+                "PDF417" -> com.google.zxing.BarcodeFormat.PDF_417
+                "CODABAR" -> com.google.zxing.BarcodeFormat.CODABAR
+                "ITF" -> com.google.zxing.BarcodeFormat.ITF
+                else -> com.google.zxing.BarcodeFormat.QR_CODE
+            }
+            
+            val writer = com.journeyapps.barcodescanner.BarcodeEncoder()
+            
+            // Use high resolution for enlarged view
+            val width = if (format == "CODE_128" && value.length > 20) 1200 else 800
+            val height = if (format == "CODE_128" && value.length > 20) 300 else 800
+            
+            val bitmap = writer.encodeBitmap(value, barcodeFormat, width, height)
+            imageView.setImageBitmap(bitmap)
+            
+            Log.d(TAG, "Generated enlarged barcode: ${width}x${height} for $format")
+            
+        } catch (e: Exception) {
+            Log.e(TAG, "Error generating enlarged barcode: ${e.message}", e)
+            Toast.makeText(context, "Error generating enlarged barcode", Toast.LENGTH_SHORT).show()
+        }
+    }
+    
+    private fun showBarcodeConfirmationDialog(barcodeValue: String, barcodeFormat: String, data: Intent) {
+        Log.d(TAG, "Showing confirmation dialog for: '$barcodeValue' ($barcodeFormat)")
+        
+        context?.let { ctx ->
+            // Extract all data from the scanner result
             val title = data.getStringExtra(BarcodeScannerActivity.BARCODE_TITLE) ?: ""
             val description = data.getStringExtra(BarcodeScannerActivity.BARCODE_DESCRIPTION) ?: ""
             val url = data.getStringExtra(BarcodeScannerActivity.BARCODE_URL) ?: ""
@@ -148,140 +244,58 @@ class GalleryFragment : Fragment() {
             val geoLat = data.getDoubleExtra(BarcodeScannerActivity.BARCODE_GEO_LAT, 0.0)
             val geoLng = data.getDoubleExtra(BarcodeScannerActivity.BARCODE_GEO_LNG, 0.0)
             val productName = data.getStringExtra(BarcodeScannerActivity.BARCODE_PRODUCT_NAME) ?: ""
-            val contactInfo = data.getStringExtra(BarcodeScannerActivity.BARCODE_CONTACT_INFO) ?: ""
+            val productBrand = data.getStringExtra(BarcodeScannerActivity.BARCODE_PRODUCT_BRAND) ?: ""
             val productImageUrl = data.getStringExtra(BarcodeScannerActivity.BARCODE_PRODUCT_IMAGE_URL) ?: ""
+            val contactInfo = data.getStringExtra(BarcodeScannerActivity.BARCODE_CONTACT_INFO) ?: ""
             
-            // Create a custom dialog
+            Log.d(TAG, "Product info: name='$productName', brand='$productBrand', title='$title'")
+            
+            // Create confirmation dialog
             val dialog = Dialog(ctx)
             dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
             dialog.setContentView(R.layout.dialog_barcode_confirmation)
-            
-            // Make dialog background transparent to show rounded corners
             dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
             
             // Set up dialog views
-            val dialogTitle = dialog.findViewById<TextView>(R.id.dialog_title)
+            val titleTextView = dialog.findViewById<TextView>(R.id.dialog_title)
             val valueTextView = dialog.findViewById<TextView>(R.id.barcode_value)
             val formatTextView = dialog.findViewById<TextView>(R.id.barcode_format)
-            val descriptionView = dialog.findViewById<TextView>(R.id.barcode_description)
-            val productImageView = dialog.findViewById<ImageView>(R.id.product_image)
-            val cancelButton = dialog.findViewById<Button>(R.id.btn_barcode_cancel)
-            val saveButton = dialog.findViewById<Button>(R.id.btn_barcode_save)
+            val barcodeImageView = dialog.findViewById<ImageView>(R.id.barcode_image)
+            val descriptionTextView = dialog.findViewById<TextView>(R.id.barcode_description)
+            val cancelButton = dialog.findViewById<Button>(R.id.btn_cancel)
+            val saveButton = dialog.findViewById<Button>(R.id.btn_save)
             
-            // Set informative title based on content
-            val dialogTitleText = when {
-                productName.isNotEmpty() && !productName.startsWith("Product:") -> productName
-                title.isNotEmpty() -> title
-                url.isNotEmpty() -> "Save URL Barcode?"
-                email.isNotEmpty() -> "Save Email Barcode?"
-                phone.isNotEmpty() -> "Save Phone Barcode?"
-                wifiSsid.isNotEmpty() -> "Save WiFi Network?"
-                contactInfo.isNotEmpty() -> "Save Contact Information?"
-                geoLat != 0.0 && geoLng != 0.0 -> "Save Location?"
-                else -> "Save Barcode?"
-            }
-            dialogTitle.text = dialogTitleText
-            
-            // Set barcode information
+            // Set dialog content
+            titleTextView.text = if (title.isNotEmpty()) title else "Save Barcode"
             valueTextView.text = barcodeValue
+            formatTextView.text = "Format: $barcodeFormat"
             
-            // Enhanced format display
-            val formatText = StringBuilder("Format: $barcodeFormat")
+            // Generate barcode preview
+            generateBarcodeImage(barcodeValue, barcodeFormat, barcodeImageView)
             
-            // Add metadata type if available
-            if (url.isNotEmpty()) {
-                formatText.append(" (URL)")
-            } else if (email.isNotEmpty()) {
-                formatText.append(" (Email)")
-            } else if (phone.isNotEmpty()) {
-                formatText.append(" (Phone)")
-            } else if (wifiSsid.isNotEmpty()) {
-                formatText.append(" (WiFi)")
-            } else if (contactInfo.isNotEmpty()) {
-                formatText.append(" (Contact)")
-            } else if (productName.isNotEmpty()) {
-                formatText.append(" (Product)")
-            }
-            
-            formatTextView.text = formatText.toString()
-            
-            // Show product image if available
-            if (productImageUrl.isNotEmpty()) {
-                // Load the image using Glide or similar library
-                // For this example, we'll just show the image view and set a background color
-                productImageView.visibility = View.VISIBLE
-                // You would use a library like Glide or Picasso here to load the image:
-                // Glide.with(this).load(productImageUrl).into(productImageView)
-            } else {
-                productImageView.visibility = View.GONE
-            }
-            
-            // Show all available metadata in a formatted way
-            val metadataText = StringBuilder()
-            
-            if (productName.isNotEmpty() && !dialogTitleText.equals(productName)) {
-                if (productName.startsWith("Product:")) {
-                    metadataText.append("<b>Barcode:</b> ${productName.substringAfter("Product: ")}").append("<br><br>")
+            // Show description if available
+            if (description.isNotEmpty() || productName.isNotEmpty()) {
+                val descText = if (productName.isNotEmpty()) {
+                    "Product: $productName"
                 } else {
-                    metadataText.append("<b>Product:</b> ${productName}").append("<br><br>")
+                    description
                 }
-            }
-            
-            if (description.isNotEmpty()) {
-                metadataText.append("<b>Description:</b> ${description}").append("<br><br>")
-            }
-            
-            if (url.isNotEmpty()) {
-                metadataText.append("<b>URL:</b> ${url}").append("<br><br>")
-            }
-            
-            if (email.isNotEmpty()) {
-                metadataText.append("<b>Email:</b> ${email}").append("<br><br>")
-            }
-            
-            if (phone.isNotEmpty()) {
-                metadataText.append("<b>Phone:</b> ${phone}").append("<br><br>")
-            }
-            
-            if (smsContent.isNotEmpty()) {
-                metadataText.append("<b>SMS:</b> ${smsContent}").append("<br><br>")
-            }
-            
-            if (wifiSsid.isNotEmpty()) {
-                metadataText.append("<b>WiFi SSID:</b> ${wifiSsid}")
-                if (wifiPassword.isNotEmpty()) {
-                    metadataText.append("<br><b>Password:</b> ${wifiPassword}")
-                }
-                if (wifiType.isNotEmpty()) {
-                    metadataText.append("<br><b>Type:</b> ${wifiType}")
-                }
-                metadataText.append("<br><br>")
-            }
-            
-            if (contactInfo.isNotEmpty()) {
-                metadataText.append("<b>Contact Info:</b><br>${contactInfo.replace("\n", "<br>")}").append("<br><br>")
-            }
-            
-            if (geoLat != 0.0 && geoLng != 0.0) {
-                metadataText.append("<b>Location:</b> ${geoLat}, ${geoLng}").append("<br><br>")
-            }
-            
-            // Set description text or hide if none
-            if (metadataText.isNotEmpty()) {
-                descriptionView.text = Html.fromHtml(metadataText.toString().trim(), Html.FROM_HTML_MODE_COMPACT)
-                descriptionView.visibility = View.VISIBLE
+                descriptionTextView.text = descText
+                descriptionTextView.visibility = View.VISIBLE
             } else {
-                descriptionView.visibility = View.GONE
+                descriptionTextView.visibility = View.GONE
             }
             
             // Set button listeners
             cancelButton.setOnClickListener {
+                Log.d(TAG, "Barcode save cancelled")
                 dialog.dismiss()
             }
             
             saveButton.setOnClickListener {
-                // Add the barcode with all metadata
-                galleryViewModel.addBarcode(
+                Log.d(TAG, "Saving barcode: '$barcodeValue' ($barcodeFormat)")
+                
+                val success = galleryViewModel.addBarcode(
                     value = barcodeValue,
                     format = barcodeFormat,
                     title = title,
@@ -299,8 +313,16 @@ class GalleryFragment : Fragment() {
                     contactInfo = contactInfo,
                     productImageUrl = productImageUrl
                 )
-                saveBarcodesToSharedPreferences()
-                Toast.makeText(ctx, "Barcode saved to gallery", Toast.LENGTH_SHORT).show()
+                
+                if (success) {
+                    saveBarcodesToSharedPreferences()
+                    Toast.makeText(ctx, "Barcode saved to gallery", Toast.LENGTH_SHORT).show()
+                    Log.i(TAG, "Barcode saved successfully: '$barcodeValue'")
+                } else {
+                    Toast.makeText(ctx, "Failed to save barcode", Toast.LENGTH_SHORT).show()
+                    Log.e(TAG, "Failed to save barcode: '$barcodeValue'")
+                }
+                
                 dialog.dismiss()
             }
             
@@ -431,6 +453,21 @@ class GalleryFragment : Fragment() {
         binding.recyclerViewBarcodes.apply {
             layoutManager = LinearLayoutManager(context)
             adapter = barcodeAdapter
+            
+            // Add touch listener for double-tap detection
+            addOnItemTouchListener(object : RecyclerView.OnItemTouchListener {
+                override fun onInterceptTouchEvent(rv: RecyclerView, e: MotionEvent): Boolean {
+                    return gestureDetector.onTouchEvent(e)
+                }
+                
+                override fun onTouchEvent(rv: RecyclerView, e: MotionEvent) {
+                    // Not needed for our use case
+                }
+                
+                override fun onRequestDisallowInterceptTouchEvent(disallowIntercept: Boolean) {
+                    // Not needed for our use case
+                }
+            })
             
             // Add spacing between items
             addItemDecoration(object : RecyclerView.ItemDecoration() {
