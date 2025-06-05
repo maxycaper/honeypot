@@ -141,7 +141,7 @@ class GalleryFragment : Fragment() {
         loadBarcodesFromSharedPreferences()
         
         // Update empty view text to include double-tap instruction
-        binding.emptyText.text = "No barcodes in this gallery yet.\nTap the + button to add one.\n\nTip: Double-tap any barcode to enlarge it."
+        binding.emptyView.text = "No barcodes in this gallery yet.\nTap the + button to add one.\n\nTip: Double-tap any barcode to enlarge it."
         
         return root
     }
@@ -260,10 +260,10 @@ class GalleryFragment : Fragment() {
             val titleTextView = dialog.findViewById<TextView>(R.id.dialog_title)
             val valueTextView = dialog.findViewById<TextView>(R.id.barcode_value)
             val formatTextView = dialog.findViewById<TextView>(R.id.barcode_format)
-            val barcodeImageView = dialog.findViewById<ImageView>(R.id.barcode_image)
+            val barcodeImageView = dialog.findViewById<ImageView>(R.id.product_image)
             val descriptionTextView = dialog.findViewById<TextView>(R.id.barcode_description)
-            val cancelButton = dialog.findViewById<Button>(R.id.btn_cancel)
-            val saveButton = dialog.findViewById<Button>(R.id.btn_save)
+            val cancelButton = dialog.findViewById<Button>(R.id.btn_barcode_cancel)
+            val saveButton = dialog.findViewById<Button>(R.id.btn_barcode_save)
             
             // Set dialog content
             titleTextView.text = if (title.isNotEmpty()) title else "Save Barcode"

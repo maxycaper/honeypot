@@ -78,6 +78,9 @@ dependencies {
     testImplementation("org.mockito:mockito-core:5.2.0")
     testImplementation("org.mockito:mockito-inline:5.2.0")
     testImplementation("androidx.arch.core:core-testing:2.2.0")
+    testImplementation("org.mockito.kotlin:mockito-kotlin:4.1.0")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.1")
+    testImplementation("org.robolectric:robolectric:4.10.3")
     
     // Android testing dependencies
     androidTestImplementation(libs.androidx.junit)
