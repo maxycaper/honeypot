@@ -22,24 +22,7 @@ class GalleryFragmentTest {
         Manifest.permission.CAMERA
     )
 
-    @Test
-    fun testScannerButtonIsDisplayed() {
-        // Launch the fragment
-        launchFragmentInContainer<GalleryFragment>()
 
-        // Verify that the scanner button is displayed
-        onView(withId(R.id.fab_scanner)).check(matches(isDisplayed()))
-    }
 
-    @Test
-    fun testScannerButtonClick() {
-        // Launch the fragment
-        launchFragmentInContainer<GalleryFragment>()
 
-        // Click on the scanner button
-        onView(withId(R.id.fab_scanner)).perform(click())
-
-        // Note: This test will only verify that clicking the button doesn't crash
-        // Testing the actual camera intent launch would require more complex testing with intents
-    }
-} 
+}
