@@ -53,7 +53,6 @@ class GalleryFragment : Fragment() {
     private var _binding: FragmentGalleryBinding? = null
     private lateinit var galleryViewModel: GalleryViewModel
     private lateinit var barcodeAdapter: BarcodeAdapter
-    private lateinit var gestureDetector: GestureDetector
 
     // This property is only valid between onCreateView and
     // onDestroyView.
@@ -102,6 +101,7 @@ class GalleryFragment : Fragment() {
     }
     
     private var galleryName: String = "Gallery"
+    private var isFirstLoad = true
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -126,8 +126,7 @@ class GalleryFragment : Fragment() {
         // Set the gallery name in the toolbar title
         (activity as? AppCompatActivity)?.supportActionBar?.title = galleryName
         
-        // Set up gesture detector for double-tap
-        setupGestureDetector()
+        // Note: Double-tap detection is now handled at the adapter level
         
         // Set up the unified add barcode FAB click listener
         binding.fabAddBarcode.setOnClickListener {
@@ -140,59 +139,109 @@ class GalleryFragment : Fragment() {
         // Load saved barcodes for this gallery
         loadBarcodesFromSharedPreferences()
         
-        // Update empty view text to include double-tap instruction
-        binding.emptyView.text = "No barcodes in this gallery yet.\nTap the + button to add one.\n\nTip: Double-tap any barcode to enlarge it."
+        // Update empty view text to include interaction instruction
+        binding.emptyView.text = "No barcodes in this gallery yet.\nTap the + button to add one.\n\nTip: Tap → dialog, 2-tap → enlarge, long press → rotate barcode, 2-tap → restore/return."
         
         return root
     }
     
-    private fun setupGestureDetector() {
-        gestureDetector = GestureDetector(context, object : GestureDetector.SimpleOnGestureListener() {
-            override fun onDoubleTap(e: MotionEvent): Boolean {
-                Log.d(TAG, "Double-tap detected")
-                // Find the barcode item that was double-tapped
-                val recyclerView = binding.recyclerViewBarcodes
-                val childView = recyclerView.findChildViewUnder(e.x, e.y)
-                
-                if (childView != null) {
-                    val position = recyclerView.getChildAdapterPosition(childView)
-                    if (position != RecyclerView.NO_POSITION) {
-                        val barcode = galleryViewModel.barcodes.value?.get(position)
-                        if (barcode != null) {
-                            Log.i(TAG, "Double-tap on barcode: '${barcode.value}' (${barcode.format})")
-                            showEnlargedBarcodeDialog(barcode)
-                        }
-                    }
-                }
-                return true
-            }
-        })
-    }
+
     
     private fun showEnlargedBarcodeDialog(barcode: BarcodeData) {
         context?.let { ctx ->
-            Log.d(TAG, "Showing enlarged barcode dialog for: '${barcode.value}'")
+            Log.i(TAG, "🚀 SHOWING ENLARGED BARCODE DIALOG for: '${barcode.value}' (${barcode.format})")
             
             val dialog = Dialog(ctx, android.R.style.Theme_Black_NoTitleBar_Fullscreen)
             dialog.setContentView(R.layout.dialog_enlarged_barcode)
+            Log.d(TAG, "Dialog created and content view set")
             
             val enlargedImageView = dialog.findViewById<ImageView>(R.id.enlarged_barcode_image)
+            val barcodeValueText = dialog.findViewById<TextView>(R.id.enlarged_barcode_value)
+            val barcodeFormatText = dialog.findViewById<TextView>(R.id.enlarged_barcode_format)
+            
+            Log.d(TAG, "Dialog views found: imageView=${enlargedImageView != null}, valueText=${barcodeValueText != null}, formatText=${barcodeFormatText != null}")
+            
+            // Set barcode information
+            barcodeValueText?.text = barcode.value
+            barcodeFormatText?.text = "Format: ${barcode.format}"
+            Log.d(TAG, "Set text values on dialog")
             
             // Generate high-resolution barcode
+            Log.d(TAG, "Generating enlarged barcode image")
             generateEnlargedBarcodeImage(barcode.value, barcode.format, enlargedImageView)
             
-            // Close dialog when tapped anywhere
-            dialog.findViewById<View>(android.R.id.content).setOnClickListener {
-                Log.d(TAG, "Enlarged barcode dialog closed")
+            // Track rotation state for the barcode image
+            var isBarcodeRotated = false
+            
+            // Add double-tap and long press functionality to enlarged barcode image
+            var lastClickTimeEnlarged = 0L
+            val doubleTapThresholdEnlarged = 300L
+            
+            enlargedImageView?.setOnClickListener {
+                val currentTime = System.currentTimeMillis()
+                val timeDiff = currentTime - lastClickTimeEnlarged
+                
+                if (timeDiff < doubleTapThresholdEnlarged && lastClickTimeEnlarged > 0) {
+                    if (isBarcodeRotated) {
+                        Log.i(TAG, "🔄 DOUBLE TAP on rotated barcode - returning to normal rotation")
+                        // Animate back to normal rotation
+                        enlargedImageView.animate()
+                            .rotation(0f)
+                            .setDuration(300)
+                            .start()
+                        isBarcodeRotated = false
+                    } else {
+                        Log.i(TAG, "🔄 DOUBLE TAP on enlarged barcode - returning to initial state")
+                        dialog.dismiss() // Close enlarged dialog
+                        // Show the regular dialog again
+                        showBarcodeDisplayDialog(barcode, -1) // Position -1 since we don't need it for display
+                    }
+                    lastClickTimeEnlarged = 0 // Reset to prevent triple-tap
+                } else {
+                    Log.d(TAG, "Single tap on enlarged barcode - waiting for potential double tap")
+                    lastClickTimeEnlarged = currentTime
+                }
+            }
+            
+            // Add long press functionality to rotate the barcode image
+            enlargedImageView?.setOnLongClickListener {
+                if (!isBarcodeRotated) {
+                    Log.i(TAG, "🔄 LONG PRESS on enlarged barcode - rotating to landscape view")
+                    // Animate rotation to 90 degrees (landscape)
+                    enlargedImageView.animate()
+                        .rotation(90f)
+                        .setDuration(300)
+                        .start()
+                    isBarcodeRotated = true
+                } else {
+                    Log.d(TAG, "Barcode already rotated - long press ignored")
+                }
+                true // Consume the event
+            }
+            
+            // Close dialog when tapped anywhere else (background)
+            dialog.findViewById<View>(android.R.id.content)?.setOnClickListener {
+                Log.d(TAG, "Enlarged barcode dialog closed by background tap")
                 dialog.dismiss()
             }
             
+            Log.i(TAG, "🎬 DISPLAYING DIALOG NOW")
             dialog.show()
+            Log.i(TAG, "✅ DIALOG SHOW() CALLED SUCCESSFULLY")
+        } ?: run {
+            Log.e(TAG, "❌ CONTEXT IS NULL - Cannot show enlarged dialog")
         }
     }
     
-    private fun generateEnlargedBarcodeImage(value: String, format: String, imageView: ImageView) {
+    private fun generateEnlargedBarcodeImage(value: String, format: String, imageView: ImageView?) {
+        if (imageView == null) {
+            Log.e(TAG, "❌ ImageView is null - cannot generate enlarged barcode")
+            return
+        }
+        
         try {
+            Log.d(TAG, "🖼️ Generating enlarged barcode: value='$value', format='$format'")
+            
             val barcodeFormat = when (format) {
                 "QR_CODE" -> com.google.zxing.BarcodeFormat.QR_CODE
                 "CODE_128" -> com.google.zxing.BarcodeFormat.CODE_128
@@ -210,19 +259,25 @@ class GalleryFragment : Fragment() {
                 else -> com.google.zxing.BarcodeFormat.QR_CODE
             }
             
+            Log.d(TAG, "Mapped format: $format -> $barcodeFormat")
+            
             val writer = com.journeyapps.barcodescanner.BarcodeEncoder()
             
             // Use high resolution for enlarged view
             val width = if (format == "CODE_128" && value.length > 20) 1200 else 800
             val height = if (format == "CODE_128" && value.length > 20) 300 else 800
             
+            Log.d(TAG, "Generating bitmap with dimensions: ${width}x${height}")
+            
             val bitmap = writer.encodeBitmap(value, barcodeFormat, width, height)
+            Log.d(TAG, "Bitmap generated successfully, setting to ImageView")
+            
             imageView.setImageBitmap(bitmap)
             
-            Log.d(TAG, "Generated enlarged barcode: ${width}x${height} for $format")
+            Log.i(TAG, "✅ Generated enlarged barcode: ${width}x${height} for $format")
             
         } catch (e: Exception) {
-            Log.e(TAG, "Error generating enlarged barcode: ${e.message}", e)
+            Log.e(TAG, "❌ Error generating enlarged barcode: ${e.message}", e)
             Toast.makeText(context, "Error generating enlarged barcode", Toast.LENGTH_SHORT).show()
         }
     }
@@ -447,27 +502,15 @@ class GalleryFragment : Fragment() {
     }
     
     private fun setupRecyclerView() {
-        barcodeAdapter = BarcodeAdapter { barcode, position ->
-            showBarcodeDisplayDialog(barcode, position)
-        }
+        barcodeAdapter = BarcodeAdapter(
+            context = requireContext(),
+            onItemClick = { barcode, position ->
+                showBarcodeDisplayDialog(barcode, position)
+            }
+        )
         binding.recyclerViewBarcodes.apply {
             layoutManager = LinearLayoutManager(context)
             adapter = barcodeAdapter
-            
-            // Add touch listener for double-tap detection
-            addOnItemTouchListener(object : RecyclerView.OnItemTouchListener {
-                override fun onInterceptTouchEvent(rv: RecyclerView, e: MotionEvent): Boolean {
-                    return gestureDetector.onTouchEvent(e)
-                }
-                
-                override fun onTouchEvent(rv: RecyclerView, e: MotionEvent) {
-                    // Not needed for our use case
-                }
-                
-                override fun onRequestDisallowInterceptTouchEvent(disallowIntercept: Boolean) {
-                    // Not needed for our use case
-                }
-            })
             
             // Add spacing between items
             addItemDecoration(object : RecyclerView.ItemDecoration() {
@@ -548,10 +591,16 @@ class GalleryFragment : Fragment() {
         itemTouchHelper.attachToRecyclerView(binding.recyclerViewBarcodes)
         
         galleryViewModel.barcodes.observe(viewLifecycleOwner) { barcodes ->
-            barcodeAdapter.submitList(barcodes)
+            barcodeAdapter.updateBarcodes(barcodes)
             
             // Show/hide empty view
             binding.emptyView.visibility = if (barcodes.isEmpty()) View.VISIBLE else View.GONE
+            
+            // Show hint for enlargement on first load if there are barcodes
+            if (barcodes.isNotEmpty() && isFirstLoad) {
+                Toast.makeText(context, "Tip: Tap → dialog, 2-tap → enlarge, long press → rotate barcode, 2-tap → restore/return", Toast.LENGTH_LONG).show()
+                isFirstLoad = false
+            }
         }
     }
     
@@ -715,6 +764,24 @@ class GalleryFragment : Fragment() {
             
             // Generate and display the barcode
             generateBarcodeImage(barcode.value, barcode.format, barcodeImageView)
+            
+            // Add double-tap functionality to the barcode image for enlargement
+            var lastClickTime = 0L
+            val doubleTapThreshold = 300L
+            barcodeImageView.setOnClickListener {
+                val currentTime = System.currentTimeMillis()
+                val timeDiff = currentTime - lastClickTime
+                
+                if (timeDiff < doubleTapThreshold && lastClickTime > 0) {
+                    Log.i(TAG, "🔥 DOUBLE TAP on barcode image in dialog: '${barcode.value}' (${barcode.format})")
+                    dialog.dismiss() // Close current dialog first
+                    showEnlargedBarcodeDialog(barcode) // Show enlarged version
+                    lastClickTime = 0 // Reset to prevent triple-tap
+                } else {
+                    Log.d(TAG, "Single tap on barcode image in dialog - waiting for potential double tap")
+                    lastClickTime = currentTime
+                }
+            }
             
             // Adjust layout for long barcodes if needed
             if (isLongCode128) {
