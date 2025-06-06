@@ -7,6 +7,19 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.ActivityInfo
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.net.Uri
+import android.os.Environment
+import android.provider.MediaStore
+import androidx.core.content.FileProvider
+import androidx.activity.result.contract.ActivityResultContracts
+import java.io.File
+import java.io.FileOutputStream
+import java.io.IOException
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.LinearGradient
@@ -102,8 +115,39 @@ class GalleryFragment : Fragment() {
         }
     }
     
+    private val takePictureLauncher = registerForActivityResult(
+        ActivityResultContracts.TakePicture()
+    ) { success ->
+        if (success && currentBarcodeForPhoto != null) {
+            Log.i(TAG, "Product photo captured successfully")
+            
+            // Save the captured photo path to the barcode
+            currentBarcodeForPhoto?.let { barcode ->
+                val position = galleryViewModel.barcodes.value?.indexOf(barcode) ?: -1
+                if (position >= 0) {
+                    galleryViewModel.updateBarcodeProductImage(position, currentPhotoPath)
+                    saveBarcodesToSharedPreferences()
+                    Toast.makeText(context, "Product photo saved", Toast.LENGTH_SHORT).show()
+                    
+                    // Refresh the dialog to show the new image
+                    showBarcodeDisplayDialog(barcode, position)
+                }
+            }
+        } else {
+            Log.w(TAG, "Product photo capture failed or cancelled")
+            // Clean up the failed photo file
+            if (currentPhotoPath.isNotEmpty()) {
+                File(currentPhotoPath).delete()
+            }
+        }
+        currentPhotoPath = ""
+        currentBarcodeForPhoto = null
+    }
+    
     private var galleryName: String = "Gallery"
     private var isFirstLoad = true
+    private var currentPhotoPath: String = ""
+    private var currentBarcodeForPhoto: BarcodeData? = null
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -809,6 +853,7 @@ class GalleryFragment : Fragment() {
             val formatTextView = dialog.findViewById<TextView>(R.id.barcode_format)
             val barcodeImageView = dialog.findViewById<ImageView>(R.id.barcode_image)
             val productImageView = dialog.findViewById<ImageView>(R.id.product_image)
+            val addPhotoButton = dialog.findViewById<Button>(R.id.btn_add_product_photo)
             val descriptionView = dialog.findViewById<TextView>(R.id.barcode_description)
             val closeButton = dialog.findViewById<Button>(R.id.btn_display_close)
             val editTitleButton = dialog.findViewById<Button>(R.id.btn_display_edit_title)
@@ -842,13 +887,47 @@ class GalleryFragment : Fragment() {
             
             formatTextView.text = formatText.toString()
             
-            // Show product image if available
-            if (barcode.productImageUrl.isNotEmpty()) {
-                productImageView.visibility = View.VISIBLE
-                // You would use a library like Glide or Picasso here to load the image:
-                // Glide.with(this).load(barcode.productImageUrl).into(productImageView)
+            // Handle product image display and camera button
+            val hasProductImage = barcode.productImageUrl.isNotEmpty()
+            val hasLocalImage = barcode.productImageUrl.startsWith("/") // Local file path
+            
+            if (hasProductImage) {
+                if (hasLocalImage) {
+                    // Load local captured image
+                    try {
+                        val bitmap = BitmapFactory.decodeFile(barcode.productImageUrl)
+                        if (bitmap != null) {
+                            productImageView.setImageBitmap(bitmap)
+                            productImageView.visibility = View.VISIBLE
+                            addPhotoButton.visibility = View.GONE
+                        } else {
+                            // Image file not found, show camera button
+                            productImageView.visibility = View.GONE
+                            addPhotoButton.visibility = View.VISIBLE
+                        }
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error loading local product image", e)
+                        productImageView.visibility = View.GONE
+                        addPhotoButton.visibility = View.VISIBLE
+                    }
+                } else {
+                    // URL-based image (would use Glide/Picasso in real implementation)
+                    productImageView.visibility = View.VISIBLE
+                    addPhotoButton.visibility = View.GONE
+                    // You would use a library like Glide or Picasso here to load the image:
+                    // Glide.with(this).load(barcode.productImageUrl).into(productImageView)
+                }
             } else {
+                // No product image available, show camera button
                 productImageView.visibility = View.GONE
+                addPhotoButton.visibility = View.VISIBLE
+            }
+            
+            // Set up camera button click listener
+            addPhotoButton.setOnClickListener {
+                Log.i(TAG, "Camera button clicked for barcode: '${barcode.value}'")
+                dialog.dismiss()
+                dispatchTakePictureIntent(barcode)
             }
             
             // Generate and display the barcode
@@ -1044,5 +1123,36 @@ class GalleryFragment : Fragment() {
     override fun onDestroyView() {
         super.onDestroyView()
         _binding = null
+    }
+    
+    @Throws(IOException::class)
+    private fun createImageFile(): File {
+        // Create an image file name
+        val timeStamp: String = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
+        val storageDir: File? = context?.getExternalFilesDir(Environment.DIRECTORY_PICTURES)
+        return File.createTempFile(
+            "PRODUCT_${timeStamp}_", /* prefix */
+            ".jpg", /* suffix */
+            storageDir /* directory */
+        ).apply {
+            // Save a file: path for use with ACTION_VIEW intents
+            currentPhotoPath = absolutePath
+        }
+    }
+    
+    private fun dispatchTakePictureIntent(barcode: BarcodeData) {
+        try {
+            val photoFile: File = createImageFile()
+            val photoURI: Uri = FileProvider.getUriForFile(
+                requireContext(),
+                "com.bar.honeypot.fileprovider",
+                photoFile
+            )
+            currentBarcodeForPhoto = barcode
+            takePictureLauncher.launch(photoURI)
+        } catch (ex: IOException) {
+            Log.e(TAG, "Error creating image file", ex)
+            Toast.makeText(context, "Error creating image file", Toast.LENGTH_SHORT).show()
+        }
     }
 }

@@ -169,4 +169,26 @@ class GalleryViewModel : ViewModel() {
         Log.w(TAG, "Invalid position for title update: $position")
         return false
     }
+    
+    /**
+     * Updates the product image URL of a barcode at the given position
+     * @param position The position of the barcode in the list
+     * @param productImageUrl The new product image URL to set
+     * @return true if successful, false otherwise
+     */
+    fun updateBarcodeProductImage(position: Int, productImageUrl: String): Boolean {
+        val currentList = _barcodes.value ?: return false
+        
+        if (position in 0 until currentList.size) {
+            val oldBarcode = currentList[position]
+            val updatedBarcode = oldBarcode.copy(productImageUrl = productImageUrl)
+            currentList[position] = updatedBarcode
+            _barcodes.value = currentList
+            Log.i(TAG, "Barcode product image updated: '${oldBarcode.value}' image set to '$productImageUrl'")
+            return true
+        }
+        
+        Log.w(TAG, "Invalid position for product image update: $position")
+        return false
+    }
 }
