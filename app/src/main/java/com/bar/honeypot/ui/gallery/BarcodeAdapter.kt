@@ -45,10 +45,10 @@ class BarcodeAdapter(private val onItemClick: (BarcodeData, Int) -> Unit) :
         private val formatTextView: TextView = itemView.findViewById(R.id.barcode_format)
         
         fun bind(barcode: BarcodeData) {
-            // Determine the title to display
+            // Determine the title to display - prioritize custom title over product name
             val displayTitle = when {
-                barcode.productName.isNotEmpty() && !barcode.productName.startsWith("Product:") -> barcode.productName
                 barcode.title.isNotEmpty() -> barcode.title
+                barcode.productName.isNotEmpty() && !barcode.productName.startsWith("Product:") -> barcode.productName
                 barcode.url.isNotEmpty() -> "URL Barcode"
                 barcode.email.isNotEmpty() -> "Email Barcode"
                 barcode.phone.isNotEmpty() -> "Phone Barcode"

@@ -675,10 +675,10 @@ class GalleryFragment : Fragment() {
             val closeButton = dialog.findViewById<Button>(R.id.btn_display_close)
             val editTitleButton = dialog.findViewById<Button>(R.id.btn_display_edit_title)
             
-            // Set informative title based on content
+            // Set informative title based on content - prioritize custom title over product name
             val title = when {
-                barcode.productName.isNotEmpty() && !barcode.productName.startsWith("Product:") -> barcode.productName
                 barcode.title.isNotEmpty() -> barcode.title
+                barcode.productName.isNotEmpty() && !barcode.productName.startsWith("Product:") -> barcode.productName
                 barcode.url.isNotEmpty() -> "URL Barcode"
                 barcode.email.isNotEmpty() -> "Email Barcode"
                 barcode.phone.isNotEmpty() -> "Phone Barcode"
@@ -689,9 +689,8 @@ class GalleryFragment : Fragment() {
             }
             titleTextView.text = title
             
-            // Show/hide edit title button based on whether a custom title can be useful
-            val needsCustomTitle = barcode.productName.isEmpty() || barcode.productName.startsWith("Product:")
-            editTitleButton.visibility = if (needsCustomTitle) View.VISIBLE else View.GONE
+            // Always show edit title button - users should be able to customize any barcode title
+            editTitleButton.visibility = View.VISIBLE
             
             valueTextView.text = barcode.value
             

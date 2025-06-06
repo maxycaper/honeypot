@@ -1,6 +1,7 @@
 package com.bar.honeypot.ui.gallery
 
 import android.Manifest
+import android.os.Bundle
 import androidx.fragment.app.testing.launchFragmentInContainer
 import androidx.test.espresso.Espresso.onView
 import androidx.test.espresso.action.ViewActions.click
@@ -22,24 +23,30 @@ class GalleryFragmentTest {
         Manifest.permission.CAMERA
     )
 
-    @Test
-    fun testScannerButtonIsDisplayed() {
-        // Launch the fragment
-        launchFragmentInContainer<GalleryFragment>()
-
-        // Verify that the scanner button is displayed
-        onView(withId(R.id.fab_scanner)).check(matches(isDisplayed()))
+    private fun createFragmentArgs(): Bundle {
+        return Bundle().apply {
+            putString("gallery_name", "Test Gallery")
+        }
     }
 
     @Test
-    fun testScannerButtonClick() {
-        // Launch the fragment
-        launchFragmentInContainer<GalleryFragment>()
+    fun testAddBarcodeButtonIsDisplayed() {
+        // Launch the fragment with required arguments
+        launchFragmentInContainer<GalleryFragment>(fragmentArgs = createFragmentArgs())
 
-        // Click on the scanner button
-        onView(withId(R.id.fab_scanner)).perform(click())
+        // Verify that the add barcode button is displayed
+        onView(withId(R.id.fab_add_barcode)).check(matches(isDisplayed()))
+    }
+
+    @Test
+    fun testAddBarcodeButtonClick() {
+        // Launch the fragment with required arguments
+        launchFragmentInContainer<GalleryFragment>(fragmentArgs = createFragmentArgs())
+
+        // Click on the add barcode button
+        onView(withId(R.id.fab_add_barcode)).perform(click())
 
         // Note: This test will only verify that clicking the button doesn't crash
-        // Testing the actual camera intent launch would require more complex testing with intents
+        // Testing the actual action choice dialog and camera intent launch would require more complex testing with intents
     }
 } 
