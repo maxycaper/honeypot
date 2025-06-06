@@ -16,10 +16,12 @@ import android.graphics.Shader
 import android.graphics.drawable.ColorDrawable
 import android.os.Bundle
 import android.text.Html
+import android.util.DisplayMetrics
 import android.util.Log
 import android.view.GestureDetector
 import android.view.LayoutInflater
 import android.view.MotionEvent
+import android.view.ScaleGestureDetector
 import android.view.View
 import android.view.ViewGroup
 import android.view.Window
@@ -140,7 +142,7 @@ class GalleryFragment : Fragment() {
         loadBarcodesFromSharedPreferences()
         
         // Update empty view text to include interaction instruction
-        binding.emptyView.text = "No barcodes in this gallery yet.\nTap the + button to add one.\n\nTip: Tap → dialog, 2-tap → enlarge, long press → rotate barcode, 2-tap → restore/return."
+        binding.emptyView.text = "No barcodes in this gallery yet.\nTap the + button to add one.\n\nTip: Tap → dialog, 2-tap → enlarge, long press → rotate & auto-size, pinch → zoom."
         
         return root
     }
@@ -170,52 +172,139 @@ class GalleryFragment : Fragment() {
             Log.d(TAG, "Generating enlarged barcode image")
             generateEnlargedBarcodeImage(barcode.value, barcode.format, enlargedImageView)
             
-            // Track rotation state for the barcode image
+            // Track rotation and scaling state for the barcode image
             var isBarcodeRotated = false
+            var currentScale = 1f
+            val originalWidth = enlargedImageView?.layoutParams?.width ?: ViewGroup.LayoutParams.MATCH_PARENT
+            val originalHeight = enlargedImageView?.layoutParams?.height ?: ViewGroup.LayoutParams.MATCH_PARENT
             
-            // Add double-tap and long press functionality to enlarged barcode image
-            var lastClickTimeEnlarged = 0L
-            val doubleTapThresholdEnlarged = 300L
+            // Get screen dimensions for auto-sizing
+            val displayMetrics = DisplayMetrics()
+            activity?.windowManager?.defaultDisplay?.getMetrics(displayMetrics)
+            val screenWidth = displayMetrics.widthPixels
+            val screenHeight = displayMetrics.heightPixels
             
-            enlargedImageView?.setOnClickListener {
-                val currentTime = System.currentTimeMillis()
-                val timeDiff = currentTime - lastClickTimeEnlarged
+            // Set up pinch-to-zoom functionality
+            val scaleGestureDetector = ScaleGestureDetector(ctx, object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
+                override fun onScale(detector: ScaleGestureDetector): Boolean {
+                    val scaleFactor = detector.scaleFactor
+                    currentScale *= scaleFactor
+                    
+                    // Constrain scaling between 0.5x and 5x
+                    currentScale = currentScale.coerceIn(0.5f, 5f)
+                    
+                    enlargedImageView?.scaleX = currentScale
+                    enlargedImageView?.scaleY = currentScale
+                    
+                    Log.d(TAG, "🔍 Pinch zoom: scale factor = $currentScale")
+                    return true
+                }
                 
-                if (timeDiff < doubleTapThresholdEnlarged && lastClickTimeEnlarged > 0) {
+                override fun onScaleBegin(detector: ScaleGestureDetector): Boolean {
+                    Log.d(TAG, "🔍 Pinch zoom started")
+                    return true
+                }
+                
+                override fun onScaleEnd(detector: ScaleGestureDetector) {
+                    Log.d(TAG, "🔍 Pinch zoom ended at scale = $currentScale")
+                }
+            })
+            
+            // Set up gesture detector for tap and long press handling
+            val gestureDetector = GestureDetector(ctx, object : GestureDetector.SimpleOnGestureListener() {
+                override fun onSingleTapConfirmed(e: MotionEvent): Boolean {
+                    Log.d(TAG, "Single tap confirmed on enlarged barcode")
+                    return true
+                }
+                
+                override fun onDoubleTap(e: MotionEvent): Boolean {
                     if (isBarcodeRotated) {
                         Log.i(TAG, "🔄 DOUBLE TAP on rotated barcode - returning to normal rotation")
-                        // Animate back to normal rotation
-                        enlargedImageView.animate()
-                            .rotation(0f)
-                            .setDuration(300)
-                            .start()
+                        // Animate back to normal rotation and reset scale
+                        enlargedImageView?.animate()
+                            ?.rotation(0f)
+                            ?.scaleX(1f)
+                            ?.scaleY(1f)
+                            ?.setDuration(300)
+                            ?.start()
+                        currentScale = 1f
                         isBarcodeRotated = false
+                        
+                        // Restore original size
+                        enlargedImageView?.let { imageView ->
+                            imageView.layoutParams.width = originalWidth
+                            imageView.layoutParams.height = originalHeight
+                            imageView.layoutParams = imageView.layoutParams
+                        }
                     } else {
                         Log.i(TAG, "🔄 DOUBLE TAP on enlarged barcode - returning to initial state")
                         dialog.dismiss() // Close enlarged dialog
                         // Show the regular dialog again
                         showBarcodeDisplayDialog(barcode, -1) // Position -1 since we don't need it for display
                     }
-                    lastClickTimeEnlarged = 0 // Reset to prevent triple-tap
-                } else {
-                    Log.d(TAG, "Single tap on enlarged barcode - waiting for potential double tap")
-                    lastClickTimeEnlarged = currentTime
+                    return true
                 }
-            }
+                
+                override fun onLongPress(e: MotionEvent) {
+                    if (!isBarcodeRotated) {
+                        Log.i(TAG, "🔄 LONG PRESS on enlarged barcode - rotating to landscape view and auto-sizing")
+                        
+                        // Calculate optimal size for landscape mode based on barcode type
+                        val isLinearBarcode = when (barcode.format) {
+                            "CODE_128", "CODE_39", "CODE_93", "EAN_13", "EAN_8", "UPC_A", "UPC_E", "CODABAR", "ITF" -> true
+                            else -> false
+                        }
+                        
+                        val newWidth: Int
+                        val newHeight: Int
+                        
+                        if (isLinearBarcode) {
+                            // For linear barcodes, make them wide and shorter
+                            newWidth = (screenWidth * 0.9).toInt()  // 90% of screen width
+                            newHeight = (screenHeight * 0.2).toInt() // 20% of screen height
+                        } else {
+                            // For 2D barcodes (QR, etc.), make them larger but square-ish
+                            val maxSize = (kotlin.math.min(screenWidth, screenHeight) * 0.8).toInt()
+                            newWidth = maxSize
+                            newHeight = maxSize
+                        }
+                        
+                        // Animate rotation to 90 degrees and resize
+                        enlargedImageView?.animate()
+                            ?.rotation(90f)
+                            ?.setDuration(300)
+                            ?.start()
+                        
+                        // Resize the ImageView
+                        enlargedImageView?.let { imageView ->
+                            imageView.layoutParams.width = newWidth
+                            imageView.layoutParams.height = newHeight
+                            imageView.layoutParams = imageView.layoutParams
+                        }
+                        
+                        isBarcodeRotated = true
+                        
+                        Log.i(TAG, "📏 Auto-sized barcode to ${newWidth}x${newHeight} for format: ${barcode.format}")
+                    } else {
+                        Log.d(TAG, "Barcode already rotated - long press ignored")
+                    }
+                }
+                
+                override fun onDown(e: MotionEvent): Boolean {
+                    return true // Must return true to receive subsequent events
+                }
+            })
             
-            // Add long press functionality to rotate the barcode image
-            enlargedImageView?.setOnLongClickListener {
-                if (!isBarcodeRotated) {
-                    Log.i(TAG, "🔄 LONG PRESS on enlarged barcode - rotating to landscape view")
-                    // Animate rotation to 90 degrees (landscape)
-                    enlargedImageView.animate()
-                        .rotation(90f)
-                        .setDuration(300)
-                        .start()
-                    isBarcodeRotated = true
-                } else {
-                    Log.d(TAG, "Barcode already rotated - long press ignored")
+            // Enhanced touch handling for zoom, tap, and long press
+            enlargedImageView?.setOnTouchListener { _, event ->
+                // Handle pinch-to-zoom first
+                val scaleHandled = scaleGestureDetector.onTouchEvent(event)
+                
+                // Handle gestures only if not currently scaling
+                if (!scaleGestureDetector.isInProgress) {
+                    gestureDetector.onTouchEvent(event)
                 }
+                
                 true // Consume the event
             }
             
@@ -598,7 +687,7 @@ class GalleryFragment : Fragment() {
             
             // Show hint for enlargement on first load if there are barcodes
             if (barcodes.isNotEmpty() && isFirstLoad) {
-                Toast.makeText(context, "Tip: Tap → dialog, 2-tap → enlarge, long press → rotate barcode, 2-tap → restore/return", Toast.LENGTH_LONG).show()
+                Toast.makeText(context, "Tip: Tap → dialog, 2-tap → enlarge, long press → rotate & auto-size, pinch → zoom", Toast.LENGTH_LONG).show()
                 isFirstLoad = false
             }
         }
