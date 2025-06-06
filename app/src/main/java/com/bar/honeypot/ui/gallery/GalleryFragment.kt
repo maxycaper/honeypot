@@ -123,14 +123,33 @@ class GalleryFragment : Fragment() {
             
             // Save the captured photo path to the barcode
             currentBarcodeForPhoto?.let { barcode ->
+                // Check if this barcode exists in the gallery already
                 val position = galleryViewModel.barcodes.value?.indexOf(barcode) ?: -1
                 if (position >= 0) {
+                    // Update existing barcode
                     galleryViewModel.updateBarcodeProductImage(position, currentPhotoPath)
                     saveBarcodesToSharedPreferences()
                     Toast.makeText(context, "Product photo saved", Toast.LENGTH_SHORT).show()
                     
                     // Refresh the dialog to show the new image
                     showBarcodeDisplayDialog(barcode, position)
+                } else {
+                    // This is a new barcode from confirmation dialog, save it with the image
+                    val success = galleryViewModel.addBarcode(
+                        value = barcode.value,
+                        format = barcode.format,
+                        title = barcode.title,
+                        productImageUrl = currentPhotoPath
+                    )
+                    
+                    if (success) {
+                        saveBarcodesToSharedPreferences()
+                        Toast.makeText(context, "Barcode and photo saved to gallery", Toast.LENGTH_SHORT).show()
+                        Log.i(TAG, "Barcode with photo saved successfully: '${barcode.value}'")
+                    } else {
+                        Toast.makeText(context, "Failed to save barcode", Toast.LENGTH_SHORT).show()
+                        Log.e(TAG, "Failed to save barcode: '${barcode.value}'")
+                    }
                 }
             }
         } else {
@@ -449,6 +468,7 @@ class GalleryFragment : Fragment() {
             val valueTextView = dialog.findViewById<TextView>(R.id.barcode_value)
             val formatTextView = dialog.findViewById<TextView>(R.id.barcode_format)
             val barcodeImageView = dialog.findViewById<ImageView>(R.id.product_image)
+            val addPhotoButton = dialog.findViewById<Button>(R.id.btn_add_product_photo)
             val descriptionTextView = dialog.findViewById<TextView>(R.id.barcode_description)
             val cancelButton = dialog.findViewById<Button>(R.id.btn_barcode_cancel)
             val saveButton = dialog.findViewById<Button>(R.id.btn_barcode_save)
@@ -460,6 +480,54 @@ class GalleryFragment : Fragment() {
             
             // Generate barcode preview
             generateBarcodeImage(barcodeValue, barcodeFormat, barcodeImageView)
+            
+            // Handle product image display and camera button
+            val hasProductImage = productImageUrl.isNotEmpty()
+            val hasLocalImage = productImageUrl.startsWith("/")
+            
+            if (hasProductImage) {
+                if (hasLocalImage) {
+                    // Load local captured image
+                    try {
+                        val bitmap = BitmapFactory.decodeFile(productImageUrl)
+                        if (bitmap != null) {
+                            barcodeImageView.setImageBitmap(bitmap)
+                            barcodeImageView.visibility = View.VISIBLE
+                            addPhotoButton.visibility = View.GONE
+                        } else {
+                            // Image file not found, show camera button
+                            barcodeImageView.visibility = View.GONE
+                            addPhotoButton.visibility = View.VISIBLE
+                        }
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error loading local product image", e)
+                        barcodeImageView.visibility = View.GONE
+                        addPhotoButton.visibility = View.VISIBLE
+                    }
+                } else {
+                    // URL-based image
+                    barcodeImageView.visibility = View.VISIBLE
+                    addPhotoButton.visibility = View.GONE
+                }
+            } else {
+                // No product image available, show camera button
+                barcodeImageView.visibility = View.GONE
+                addPhotoButton.visibility = View.VISIBLE
+            }
+            
+            // Set up camera button click listener
+            addPhotoButton.setOnClickListener {
+                Log.i(TAG, "Camera button clicked in confirmation dialog")
+                // Store the barcode data temporarily for when the photo is taken
+                currentBarcodeForPhoto = BarcodeData(
+                    value = barcodeValue,
+                    format = barcodeFormat,
+                    title = title,
+                    productImageUrl = productImageUrl
+                )
+                dialog.dismiss()
+                dispatchTakePictureIntent(currentBarcodeForPhoto!!)
+            }
             
             // Show description if available
             if (description.isNotEmpty() || productName.isNotEmpty()) {
