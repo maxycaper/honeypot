@@ -13,7 +13,6 @@ import android.net.Uri
 import android.os.Environment
 import android.provider.MediaStore
 import androidx.core.content.FileProvider
-import androidx.activity.result.contract.ActivityResultContracts
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
@@ -469,6 +468,8 @@ class GalleryFragment : Fragment() {
             val formatTextView = dialog.findViewById<TextView>(R.id.barcode_format)
             val barcodeImageView = dialog.findViewById<ImageView>(R.id.product_image)
             val addPhotoButton = dialog.findViewById<Button>(R.id.btn_add_product_photo)
+            val takeNewPhotoButton = dialog.findViewById<Button>(R.id.btn_take_new_photo)
+            val removePhotoButton = dialog.findViewById<Button>(R.id.btn_remove_photo)
             val descriptionTextView = dialog.findViewById<TextView>(R.id.barcode_description)
             val cancelButton = dialog.findViewById<Button>(R.id.btn_barcode_cancel)
             val saveButton = dialog.findViewById<Button>(R.id.btn_barcode_save)
@@ -481,7 +482,7 @@ class GalleryFragment : Fragment() {
             // Generate barcode preview
             generateBarcodeImage(barcodeValue, barcodeFormat, barcodeImageView)
             
-            // Handle product image display and camera button
+            // Enhanced product image display and photo management for confirmation dialog
             val hasProductImage = productImageUrl.isNotEmpty()
             val hasLocalImage = productImageUrl.startsWith("/")
             
@@ -494,39 +495,93 @@ class GalleryFragment : Fragment() {
                             barcodeImageView.setImageBitmap(bitmap)
                             barcodeImageView.visibility = View.VISIBLE
                             addPhotoButton.visibility = View.GONE
+                            removePhotoButton.visibility = View.VISIBLE
                         } else {
-                            // Image file not found, show camera button
+                            // Image file not found, show initial state
                             barcodeImageView.visibility = View.GONE
                             addPhotoButton.visibility = View.VISIBLE
+                            removePhotoButton.visibility = View.GONE
                         }
                     } catch (e: Exception) {
                         Log.e(TAG, "Error loading local product image", e)
                         barcodeImageView.visibility = View.GONE
                         addPhotoButton.visibility = View.VISIBLE
+                        removePhotoButton.visibility = View.GONE
                     }
                 } else {
                     // URL-based image
                     barcodeImageView.visibility = View.VISIBLE
                     addPhotoButton.visibility = View.GONE
+                    removePhotoButton.visibility = View.VISIBLE
                 }
             } else {
-                // No product image available, show camera button
+                // No product image available, show initial camera button
                 barcodeImageView.visibility = View.GONE
                 addPhotoButton.visibility = View.VISIBLE
+                removePhotoButton.visibility = View.GONE
             }
             
-            // Set up camera button click listener
-            addPhotoButton.setOnClickListener {
-                Log.i(TAG, "Camera button clicked in confirmation dialog")
-                // Store the barcode data temporarily for when the photo is taken
-                currentBarcodeForPhoto = BarcodeData(
+            // Create barcode data for photo operations
+            val createBarcodeData = { imageUrl: String ->
+                BarcodeData(
                     value = barcodeValue,
                     format = barcodeFormat,
+                    galleryName = galleryName,
                     title = title,
-                    productImageUrl = productImageUrl
+                    description = description,
+                    url = url,
+                    email = email,
+                    phone = phone,
+                    smsContent = smsContent,
+                    wifiSsid = wifiSsid,
+                    wifiPassword = wifiPassword,
+                    wifiType = wifiType,
+                    geoLat = geoLat,
+                    geoLng = geoLng,
+                    productName = productName,
+                    contactInfo = contactInfo,
+                    productImageUrl = imageUrl
                 )
+            }
+            
+            // Set up photo management button listeners
+            addPhotoButton.setOnClickListener {
+                Log.i(TAG, "Add photo button clicked in confirmation dialog")
+                currentBarcodeForPhoto = createBarcodeData(productImageUrl)
                 dialog.dismiss()
                 dispatchTakePictureIntent(currentBarcodeForPhoto!!)
+            }
+            
+            takeNewPhotoButton.setOnClickListener {
+                Log.i(TAG, "Take new photo button clicked in confirmation dialog")
+                currentBarcodeForPhoto = createBarcodeData(productImageUrl)
+                dialog.dismiss()
+                dispatchTakePictureIntent(currentBarcodeForPhoto!!)
+            }
+            
+            removePhotoButton.setOnClickListener {
+                Log.i(TAG, "Remove photo button clicked in confirmation dialog")
+                
+                // Delete the local image file if it exists
+                if (hasLocalImage && productImageUrl.isNotEmpty()) {
+                    try {
+                        val file = File(productImageUrl)
+                        if (file.exists()) {
+                            file.delete()
+                            Log.d(TAG, "Deleted local image file: $productImageUrl")
+                        }
+                    } catch (e: Exception) {
+                        Log.w(TAG, "Failed to delete image file: $productImageUrl", e)
+                    }
+                }
+                
+                Toast.makeText(ctx, "Product photo removed", Toast.LENGTH_SHORT).show()
+                
+                // Refresh the dialog with no image
+                dialog.dismiss()
+                showBarcodeConfirmationDialog(barcodeValue, barcodeFormat, data.apply {
+                    putExtra(BarcodeScannerActivity.BARCODE_PRODUCT_IMAGE_URL, "")
+                })
             }
             
             // Show description if available
@@ -922,6 +977,8 @@ class GalleryFragment : Fragment() {
             val barcodeImageView = dialog.findViewById<ImageView>(R.id.barcode_image)
             val productImageView = dialog.findViewById<ImageView>(R.id.product_image)
             val addPhotoButton = dialog.findViewById<Button>(R.id.btn_add_product_photo)
+            val takeNewPhotoButton = dialog.findViewById<Button>(R.id.btn_take_new_photo)
+            val removePhotoButton = dialog.findViewById<Button>(R.id.btn_remove_photo)
             val descriptionView = dialog.findViewById<TextView>(R.id.barcode_description)
             val closeButton = dialog.findViewById<Button>(R.id.btn_display_close)
             val editTitleButton = dialog.findViewById<Button>(R.id.btn_display_edit_title)
@@ -955,7 +1012,7 @@ class GalleryFragment : Fragment() {
             
             formatTextView.text = formatText.toString()
             
-            // Handle product image display and camera button
+            // Enhanced product image display and photo management
             val hasProductImage = barcode.productImageUrl.isNotEmpty()
             val hasLocalImage = barcode.productImageUrl.startsWith("/") // Local file path
             
@@ -968,34 +1025,71 @@ class GalleryFragment : Fragment() {
                             productImageView.setImageBitmap(bitmap)
                             productImageView.visibility = View.VISIBLE
                             addPhotoButton.visibility = View.GONE
+                            removePhotoButton.visibility = View.VISIBLE
                         } else {
-                            // Image file not found, show camera button
+                            // Image file not found, show initial state
                             productImageView.visibility = View.GONE
                             addPhotoButton.visibility = View.VISIBLE
+                            removePhotoButton.visibility = View.GONE
                         }
                     } catch (e: Exception) {
                         Log.e(TAG, "Error loading local product image", e)
                         productImageView.visibility = View.GONE
                         addPhotoButton.visibility = View.VISIBLE
+                        removePhotoButton.visibility = View.GONE
                     }
                 } else {
                     // URL-based image (would use Glide/Picasso in real implementation)
                     productImageView.visibility = View.VISIBLE
                     addPhotoButton.visibility = View.GONE
+                    removePhotoButton.visibility = View.VISIBLE
                     // You would use a library like Glide or Picasso here to load the image:
                     // Glide.with(this).load(barcode.productImageUrl).into(productImageView)
                 }
             } else {
-                // No product image available, show camera button
+                // No product image available, show initial camera button
                 productImageView.visibility = View.GONE
                 addPhotoButton.visibility = View.VISIBLE
+                removePhotoButton.visibility = View.GONE
             }
             
-            // Set up camera button click listener
+            // Set up photo management button listeners
             addPhotoButton.setOnClickListener {
-                Log.i(TAG, "Camera button clicked for barcode: '${barcode.value}'")
+                Log.i(TAG, "Add photo button clicked for barcode: '${barcode.value}'")
                 dialog.dismiss()
                 dispatchTakePictureIntent(barcode)
+            }
+            
+            takeNewPhotoButton.setOnClickListener {
+                Log.i(TAG, "Take new photo button clicked for barcode: '${barcode.value}'")
+                dialog.dismiss()
+                dispatchTakePictureIntent(barcode)
+            }
+            
+            removePhotoButton.setOnClickListener {
+                Log.i(TAG, "Remove photo button clicked for barcode: '${barcode.value}'")
+                
+                // Delete the local image file if it exists
+                if (hasLocalImage && barcode.productImageUrl.isNotEmpty()) {
+                    try {
+                        val file = File(barcode.productImageUrl)
+                        if (file.exists()) {
+                            file.delete()
+                            Log.d(TAG, "Deleted local image file: ${barcode.productImageUrl}")
+                        }
+                    } catch (e: Exception) {
+                        Log.w(TAG, "Failed to delete image file: ${barcode.productImageUrl}", e)
+                    }
+                }
+                
+                // Remove the image reference from the barcode
+                galleryViewModel.removeBarcodeProductImage(position)
+                saveBarcodesToSharedPreferences()
+                Toast.makeText(context, "Product photo removed", Toast.LENGTH_SHORT).show()
+                
+                // Refresh the dialog to show updated state
+                dialog.dismiss()
+                showBarcodeDisplayDialog(barcode.copy(productImageUrl = ""), position)
             }
             
             // Generate and display the barcode

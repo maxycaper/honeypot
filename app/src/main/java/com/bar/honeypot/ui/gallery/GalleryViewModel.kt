@@ -191,4 +191,25 @@ class GalleryViewModel : ViewModel() {
         Log.w(TAG, "Invalid position for product image update: $position")
         return false
     }
+    
+    /**
+     * Removes the product image from a barcode at the given position
+     * @param position The position of the barcode in the list
+     * @return true if successful, false otherwise
+     */
+    fun removeBarcodeProductImage(position: Int): Boolean {
+        val currentList = _barcodes.value ?: return false
+        
+        if (position in 0 until currentList.size) {
+            val oldBarcode = currentList[position]
+            val updatedBarcode = oldBarcode.copy(productImageUrl = "")
+            currentList[position] = updatedBarcode
+            _barcodes.value = currentList
+            Log.i(TAG, "Barcode product image removed: '${oldBarcode.value}'")
+            return true
+        }
+        
+        Log.w(TAG, "Invalid position for product image removal: $position")
+        return false
+    }
 }
