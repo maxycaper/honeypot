@@ -39,6 +39,7 @@ class BarcodeScannerActivity : AppCompatActivity() {
     private lateinit var binding: ActivityBarcodeScannerBinding
     private lateinit var cameraExecutor: ExecutorService
     private lateinit var barcodeScanner: BarcodeScanner
+    private var isProcessingBarcode = false
 
     companion object {
         private const val TAG = "BarcodeScanner"
@@ -135,14 +136,24 @@ class BarcodeScannerActivity : AppCompatActivity() {
     }
     
     private fun processBarcodes(barcodes: List<Barcode>) {
-        if (barcodes.isNotEmpty()) {
+        if (barcodes.isNotEmpty() && !isProcessingBarcode) {
+            isProcessingBarcode = true
             val barcode = barcodes.first()
             barcode.rawValue?.let { value ->
-                val format = getReadableFormat(barcode.format)
-                Log.i(TAG, "Barcode detected: '$value' (Format: $format)")
+                var format = getReadableFormat(barcode.format)
+                Log.i(TAG, "Barcode detected: '$value' (Format: $format, Raw format: ${barcode.format})")
+                
+                if (format == "UNKNOWN") {
+                    val guessedFormat = guessFormatFromValue(value)
+                    Log.w(TAG, "Unknown barcode format detected. Raw format code: ${barcode.format}. Guessing format: $guessedFormat based on value pattern.")
+                    format = guessedFormat
+                }
                 
                 // Process the barcode immediately to avoid multiple processing
                 processDetectedBarcode(barcode, value, format)
+            } ?: run {
+                Log.w(TAG, "Barcode detected but rawValue is null")
+                isProcessingBarcode = false
             }
         }
     }
@@ -216,7 +227,7 @@ class BarcodeScannerActivity : AppCompatActivity() {
     }
 
     private fun getReadableFormat(format: Int): String {
-        return when (format) {
+        val formatName = when (format) {
             Barcode.FORMAT_CODE_128 -> "CODE_128"
             Barcode.FORMAT_CODE_39 -> "CODE_39"
             Barcode.FORMAT_CODE_93 -> "CODE_93"
@@ -230,7 +241,45 @@ class BarcodeScannerActivity : AppCompatActivity() {
             Barcode.FORMAT_UPC_E -> "UPC_E"
             Barcode.FORMAT_PDF417 -> "PDF417"
             Barcode.FORMAT_AZTEC -> "AZTEC"
-            else -> "UNKNOWN"
+            else -> {
+                Log.w(TAG, "Unknown barcode format code: $format. This may be a new or unsupported format.")
+                "UNKNOWN"
+            }
+        }
+        Log.d(TAG, "Format conversion: raw=$format -> readable=$formatName")
+        return formatName
+    }
+    
+    private fun guessFormatFromValue(value: String): String {
+        return when {
+            // UPC-A: exactly 12 digits (sometimes stored as 11+check digit)
+            value.matches(Regex("^\\d{12}$")) -> "UPC_A"
+            value.matches(Regex("^\\d{11}$")) -> "UPC_A" // UPC-A without check digit
+            
+            // EAN-13: exactly 13 digits
+            value.matches(Regex("^\\d{13}$")) -> "EAN_13"
+            
+            // EAN-8: exactly 8 digits
+            value.matches(Regex("^\\d{8}$")) -> "EAN_8"
+            
+            // UPC-E: exactly 6 or 8 digits
+            value.matches(Regex("^\\d{6}$")) -> "UPC_E"
+            
+            // ITF: even number of digits (Interleaved 2 of 5)
+            value.matches(Regex("^\\d+$")) && value.length % 2 == 0 && value.length >= 4 -> "ITF"
+            
+            // CODE_39: alphanumeric with possible special characters
+            value.matches(Regex("^[A-Z0-9\\-. \$/%+]+$")) -> "CODE_39"
+            
+            // QR Code patterns
+            value.startsWith("http://") || value.startsWith("https://") -> "QR_CODE"
+            value.startsWith("WIFI:") -> "QR_CODE"
+            value.startsWith("BEGIN:VCARD") -> "QR_CODE"
+            value.startsWith("geo:") -> "QR_CODE"
+            value.contains("@") && value.contains(".") -> "QR_CODE" // Email-like
+            
+            // Default for everything else
+            else -> "CODE_128"
         }
     }
 
@@ -389,11 +438,14 @@ class BarcodeScannerActivity : AppCompatActivity() {
                 barcodeScanner.process(image)
                     .addOnSuccessListener { barcodes ->
                         if (barcodes.isNotEmpty()) {
+                            Log.d(TAG, "Found ${barcodes.size} barcode(s) in frame")
                             onBarcodesDetected(barcodes)
                         }
                     }
-                    .addOnFailureListener {
-                        Log.e(TAG, "Barcode scanning failed", it)
+                    .addOnFailureListener { exception ->
+                        Log.e(TAG, "Barcode scanning failed", exception)
+                        // Reset processing flag on failure
+                        isProcessingBarcode = false
                     }
                     .addOnCompleteListener {
                         imageProxy.close()
