@@ -23,6 +23,7 @@ class GalleryFragmentTest {
         Manifest.permission.CAMERA
     )
 
+feature/productImage
     private fun createFragmentArgs(): Bundle {
         return Bundle().apply {
             putString("gallery_name", "Test Gallery")
@@ -50,3 +51,9 @@ class GalleryFragmentTest {
         // Testing the actual action choice dialog and camera intent launch would require more complex testing with intents
     }
 } 
+
+
+
+
+}
+
