@@ -1,5 +1,7 @@
 package com.bar.honeypot.ui.gallery
 
+import android.content.Context
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -8,64 +10,69 @@ import androidx.recyclerview.widget.RecyclerView
 import com.bar.honeypot.R
 import com.bar.honeypot.model.BarcodeData
 
-class BarcodeAdapter(private val onItemClick: (BarcodeData, Int) -> Unit) : 
-    RecyclerView.Adapter<BarcodeAdapter.BarcodeViewHolder>() {
-    
-    private var barcodes: List<BarcodeData> = emptyList()
-    
-    fun submitList(newList: List<BarcodeData>) {
-        barcodes = newList
-        notifyDataSetChanged()
+/**
+ * Simple adapter - tap item container to show dialog
+ */
+class BarcodeAdapter(
+    private val context: Context,
+    private val onItemClick: (BarcodeData, Int) -> Unit
+) : RecyclerView.Adapter<BarcodeAdapter.BarcodeViewHolder>() {
+
+    companion object {
+        private const val TAG = "BarcodeAdapter"
     }
-    
+
+    private var barcodes = mutableListOf<BarcodeData>()
+
+    /**
+     * Simple ViewHolder - just handles item clicks
+     */
+    inner class BarcodeViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
+        private val titleTextView: TextView = itemView.findViewById(R.id.barcode_title)
+        private val valueTextView: TextView = itemView.findViewById(R.id.barcode_value)
+        private val formatTextView: TextView = itemView.findViewById(R.id.barcode_format)
+
+        fun bind(barcode: BarcodeData, position: Int) {
+            Log.d(TAG, "Binding barcode at position $position: '${barcode.value}' (${barcode.format})")
+            
+            titleTextView.text = barcode.title.ifEmpty { "Barcode ${position + 1}" }
+            valueTextView.text = barcode.value
+            formatTextView.text = barcode.format
+            
+            // Simple click on barcode_item_container to show dialog
+            itemView.setOnClickListener {
+                Log.i(TAG, "✅ Click on barcode_item_container at position $position: '${barcode.value}'")
+                onItemClick(barcode, position)
+            }
+        }
+
+
+    }
+
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): BarcodeViewHolder {
         val view = LayoutInflater.from(parent.context)
             .inflate(R.layout.item_barcode, parent, false)
         return BarcodeViewHolder(view)
     }
-    
+
     override fun onBindViewHolder(holder: BarcodeViewHolder, position: Int) {
-        val barcode = barcodes[position]
-        holder.bind(barcode)
-        
-        // Set content description and tag for easier UI testing/automation
-        holder.itemView.contentDescription = "barcode_item_${barcode.value}"
-        holder.itemView.tag = "barcode_item_${position}"
-        
-        holder.itemView.setOnClickListener {
-            onItemClick(barcode, position)
-        }
+        holder.bind(barcodes[position], position)
     }
-    
+
     override fun getItemCount(): Int = barcodes.size
-    
-    class BarcodeViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
-        private val titleTextView: TextView = itemView.findViewById(R.id.barcode_title)
-        private val valueTextView: TextView = itemView.findViewById(R.id.barcode_value)
-        private val formatTextView: TextView = itemView.findViewById(R.id.barcode_format)
-        
-        fun bind(barcode: BarcodeData) {
-            // Determine the title to display
-            val displayTitle = when {
-                barcode.productName.isNotEmpty() && !barcode.productName.startsWith("Product:") -> barcode.productName
-                barcode.title.isNotEmpty() -> barcode.title
-                barcode.url.isNotEmpty() -> "URL Barcode"
-                barcode.email.isNotEmpty() -> "Email Barcode"
-                barcode.phone.isNotEmpty() -> "Phone Barcode"
-                barcode.wifiSsid.isNotEmpty() -> "WiFi Network"
-                barcode.contactInfo.isNotEmpty() -> "Contact Information"
-                barcode.geoLat != 0.0 && barcode.geoLng != 0.0 -> "Location"
-                else -> "Barcode: ${barcode.format}"
-            }
-            
-            titleTextView.text = displayTitle
-            valueTextView.text = barcode.value
-            formatTextView.text = "Format: ${barcode.format}"
-            
-            // Set content descriptions for accessibility and UI testing
-            titleTextView.contentDescription = "title_${barcode.value}"
-            valueTextView.contentDescription = "value_${barcode.value}"
-            formatTextView.contentDescription = "format_${barcode.format}"
+
+    fun updateBarcodes(newBarcodes: List<BarcodeData>) {
+        Log.i(TAG, "Updating barcodes list with ${newBarcodes.size} items")
+        barcodes.clear()
+        barcodes.addAll(newBarcodes)
+        notifyDataSetChanged()
+    }
+
+    fun removeBarcode(position: Int) {
+        if (position in 0 until barcodes.size) {
+            val removedBarcode = barcodes.removeAt(position)
+            notifyItemRemoved(position)
+            Log.i(TAG, "Removed barcode at position $position: '${removedBarcode.value}'")
         }
     }
 } 

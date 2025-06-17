@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#E0000000"
+    android:clickable="true"
+    android:focusable="true">
+
+    <!-- Barcode Information (Top) -->
+    <LinearLayout
+        android:id="@+id/barcode_info_header"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentTop="true"
+        android:orientation="vertical"
+        android:padding="16dp"
+        android:gravity="center">
+
+        <TextView
+            android:id="@+id/enlarged_barcode_value"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="#FFFFFF"
+            android:textSize="14sp"
+            android:alpha="0.9"
+            android:fontFamily="monospace" />
+
+        <TextView
+            android:id="@+id/enlarged_barcode_format"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:textColor="#FFFFFF"
+            android:textSize="12sp"
+            android:alpha="0.7" />
+
+    </LinearLayout>
+
+    <!-- Enlarged Barcode Image (Center) -->
+    <ImageView
+        android:id="@+id/enlarged_barcode_image"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_centerInParent="true"
+        android:layout_below="@id/barcode_info_header"
+        android:layout_above="@id/instruction_text"
+        android:layout_margin="24dp"
+        android:adjustViewBounds="true"
+        android:scaleType="fitCenter"
+        android:contentDescription="Enlarged barcode image" />
+
+    <!-- Instruction Text (Bottom) -->
+    <TextView
+        android:id="@+id/instruction_text"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:layout_centerHorizontal="true"
+        android:layout_marginBottom="16dp"
+        android:text="Tap anywhere to close • Rotated to landscape for better viewing"
+        android:textColor="#FFFFFF"
+        android:textSize="14sp"
+        android:alpha="0.8"
+        android:gravity="center" />
+
+</RelativeLayout> 

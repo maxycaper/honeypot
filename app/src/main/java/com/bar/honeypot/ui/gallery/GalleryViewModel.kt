@@ -1,5 +1,6 @@
 package com.bar.honeypot.ui.gallery
 
+import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
@@ -8,6 +9,10 @@ import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 
 class GalleryViewModel : ViewModel() {
+    
+    companion object {
+        private const val TAG = "GalleryViewModel"
+    }
 
     private val _barcodes = MutableLiveData<MutableList<BarcodeData>>()
     val barcodes: LiveData<MutableList<BarcodeData>> = _barcodes
@@ -17,10 +22,12 @@ class GalleryViewModel : ViewModel() {
     
     init {
         _barcodes.value = mutableListOf()
+        Log.d(TAG, "GalleryViewModel initialized")
     }
     
     fun setGalleryName(name: String) {
         _currentGalleryName.value = name
+        Log.d(TAG, "Gallery name set to: '$name'")
     }
     
     /**
@@ -50,8 +57,11 @@ class GalleryViewModel : ViewModel() {
     ): Boolean {
         val currentList = _barcodes.value ?: mutableListOf()
         
+        Log.d(TAG, "Adding barcode: value='$value', format='$format', gallery='${_currentGalleryName.value}'")
+        
         // Check if this barcode already exists in the gallery
         if (isDuplicateBarcode(value)) {
+            Log.w(TAG, "Duplicate barcode rejected: '$value'")
             return false
         }
         
@@ -74,8 +84,11 @@ class GalleryViewModel : ViewModel() {
             contactInfo = contactInfo,
             productImageUrl = productImageUrl
         )
+        
         currentList.add(newBarcode)
         _barcodes.value = currentList
+        
+        Log.i(TAG, "Barcode added successfully: '$value' ($format) to gallery '${_currentGalleryName.value}'. Total: ${currentList.size}")
         return true
     }
     
@@ -86,26 +99,38 @@ class GalleryViewModel : ViewModel() {
      */
     fun isDuplicateBarcode(value: String): Boolean {
         val currentList = _barcodes.value ?: return false
-        return currentList.any { it.value == value }
+        val exists = currentList.any { it.value == value }
+        if (exists) {
+            Log.d(TAG, "Duplicate check: barcode '$value' already exists in gallery")
+        }
+        return exists
     }
     
     fun deleteBarcode(position: Int) {
         val currentList = _barcodes.value ?: return
         if (position in 0 until currentList.size) {
+            val deletedBarcode = currentList[position]
             currentList.removeAt(position)
             _barcodes.value = currentList
+            Log.i(TAG, "Barcode deleted: '${deletedBarcode.value}' (${deletedBarcode.format}) from position $position")
+        } else {
+            Log.w(TAG, "Invalid delete position: $position")
         }
     }
     
     fun saveBarcodes(saveCallback: (String) -> Unit) {
         val barcodesJson = Gson().toJson(_barcodes.value)
+        Log.d(TAG, "Saving ${_barcodes.value?.size ?: 0} barcodes to storage")
         saveCallback(barcodesJson)
     }
     
     fun loadBarcodes(galleryName: String, barcodesJson: String?) {
         _currentGalleryName.value = galleryName
+        Log.d(TAG, "Loading barcodes for gallery: '$galleryName'")
+        
         if (barcodesJson.isNullOrEmpty()) {
             _barcodes.value = mutableListOf()
+            Log.d(TAG, "No saved barcodes found for gallery '$galleryName'")
             return
         }
         
@@ -116,7 +141,9 @@ class GalleryViewModel : ViewModel() {
             _barcodes.value = loadedBarcodes
                 .filter { it.galleryName == galleryName }
                 .toMutableList()
+            Log.i(TAG, "Loaded ${_barcodes.value?.size ?: 0} barcodes for gallery '$galleryName'")
         } catch (e: Exception) {
+            Log.e(TAG, "Error loading barcodes for gallery '$galleryName': ${e.message}", e)
             _barcodes.value = mutableListOf()
         }
     }
@@ -131,12 +158,58 @@ class GalleryViewModel : ViewModel() {
         val currentList = _barcodes.value ?: return false
         
         if (position in 0 until currentList.size) {
-            val updatedBarcode = currentList[position].copy(title = newTitle)
+            val oldBarcode = currentList[position]
+            val updatedBarcode = oldBarcode.copy(title = newTitle)
             currentList[position] = updatedBarcode
             _barcodes.value = currentList
+            Log.i(TAG, "Barcode title updated: '${oldBarcode.value}' title changed from '${oldBarcode.title}' to '$newTitle'")
             return true
         }
         
+        Log.w(TAG, "Invalid position for title update: $position")
+        return false
+    }
+    
+    /**
+     * Updates the product image URL of a barcode at the given position
+     * @param position The position of the barcode in the list
+     * @param productImageUrl The new product image URL to set
+     * @return true if successful, false otherwise
+     */
+    fun updateBarcodeProductImage(position: Int, productImageUrl: String): Boolean {
+        val currentList = _barcodes.value ?: return false
+        
+        if (position in 0 until currentList.size) {
+            val oldBarcode = currentList[position]
+            val updatedBarcode = oldBarcode.copy(productImageUrl = productImageUrl)
+            currentList[position] = updatedBarcode
+            _barcodes.value = currentList
+            Log.i(TAG, "Barcode product image updated: '${oldBarcode.value}' image set to '$productImageUrl'")
+            return true
+        }
+        
+        Log.w(TAG, "Invalid position for product image update: $position")
+        return false
+    }
+    
+    /**
+     * Removes the product image from a barcode at the given position
+     * @param position The position of the barcode in the list
+     * @return true if successful, false otherwise
+     */
+    fun removeBarcodeProductImage(position: Int): Boolean {
+        val currentList = _barcodes.value ?: return false
+        
+        if (position in 0 until currentList.size) {
+            val oldBarcode = currentList[position]
+            val updatedBarcode = oldBarcode.copy(productImageUrl = "")
+            currentList[position] = updatedBarcode
+            _barcodes.value = currentList
+            Log.i(TAG, "Barcode product image removed: '${oldBarcode.value}'")
+            return true
+        }
+        
+        Log.w(TAG, "Invalid position for product image removal: $position")
         return false
     }
 }
