@@ -3,6 +3,8 @@ package com.bar.honeypot
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.view.View
 import android.widget.FrameLayout
 import android.widget.TextView
@@ -13,6 +15,10 @@ import java.util.Date
 import java.util.Locale
 
 class SplashActivity : AppCompatActivity() {
+
+    private val autoDismissHandler = Handler(Looper.getMainLooper())
+    private var autoDismissRunnable: Runnable? = null
+    private var hasNavigated = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -32,6 +38,14 @@ class SplashActivity : AppCompatActivity() {
         rootView.setOnClickListener {
             navigateToMainActivity()
         }
+
+        // Auto-dismiss after 3 seconds if no tap
+        autoDismissRunnable = Runnable {
+            if (!hasNavigated) {
+                navigateToMainActivity()
+            }
+        }
+        autoDismissHandler.postDelayed(autoDismissRunnable!!, 3000)
     }
     
     private fun setVersionText() {
@@ -64,6 +78,9 @@ class SplashActivity : AppCompatActivity() {
     }
     
     private fun navigateToMainActivity() {
+        if (hasNavigated) return
+        hasNavigated = true
+        autoDismissRunnable?.let { autoDismissHandler.removeCallbacks(it) }
         val intent = Intent(this, MainActivity::class.java)
         startActivity(intent)
         finish() // Close the splash activity so it's not in the back stack
