@@ -1,8 +1,25 @@
 <?xml version="1.0" encoding="utf-8"?>
-<shape xmlns:android="http://schemas.android.com/apk/res/android"
-    android:shape="rectangle">
-    <stroke
-        android:width="2dp"
-        android:color="@color/neon_hot_pink" />
-    <corners android:radius="8dp" />
-</shape> 
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Semi-transparent fill -->
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="#22000000" />
+            <corners android:radius="8dp" />
+        </shape>
+    </item>
+    <!-- Main rectangle border -->
+    <item>
+        <shape android:shape="rectangle">
+            <stroke android:width="3dp" android:color="@color/neon_hot_pink" />
+            <corners android:radius="8dp" />
+        </shape>
+    </item>
+    <!-- Corner marks (simulate with lines) -->
+    <item>
+        <shape android:shape="rectangle">
+            <size android:width="320dp" android:height="180dp" />
+            <solid android:color="@android:color/transparent" />
+            <stroke android:width="0dp" android:color="@android:color/transparent" />
+        </shape>
+    </item>
+</layer-list> 

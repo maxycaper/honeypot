@@ -34,12 +34,31 @@ import java.util.concurrent.Executors
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import androidx.camera.core.Camera
+import androidx.camera.core.CameraControl
+import androidx.camera.core.CameraInfo
+import androidx.camera.camera2.interop.Camera2Interop
+import androidx.camera.core.FocusMeteringAction
+import androidx.camera.core.MeteringPointFactory
+import androidx.camera.core.MeteringPoint
+import com.google.zxing.BinaryBitmap
+import com.google.zxing.MultiFormatReader
+import com.google.zxing.common.HybridBinarizer
+import com.google.zxing.LuminanceSource
+import com.google.zxing.RGBLuminanceSource
+import com.google.zxing.Result
+import com.google.zxing.NotFoundException
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 
 class BarcodeScannerActivity : AppCompatActivity() {
     private lateinit var binding: ActivityBarcodeScannerBinding
     private lateinit var cameraExecutor: ExecutorService
     private lateinit var barcodeScanner: BarcodeScanner
     private var isProcessingBarcode = false
+    private var camera: Camera? = null
+    private var isFocusing = false
+    private var focusAchieved = false
 
     companion object {
         private const val TAG = "BarcodeScanner"
@@ -106,8 +125,14 @@ class BarcodeScannerActivity : AppCompatActivity() {
         cameraProviderFuture.addListener({
             val cameraProvider: ProcessCameraProvider = cameraProviderFuture.get()
 
-            // Preview
-            val preview = Preview.Builder().build().also {
+            // Preview with Camera2Interop for continuous autofocus
+            val previewBuilder = Preview.Builder()
+            val camera2PreviewExtender = Camera2Interop.Extender(previewBuilder)
+            camera2PreviewExtender.setCaptureRequestOption(
+                android.hardware.camera2.CaptureRequest.CONTROL_AF_MODE,
+                android.hardware.camera2.CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE
+            )
+            val preview = previewBuilder.build().also {
                 it.setSurfaceProvider(binding.viewFinder.surfaceProvider)
             }
 
@@ -117,8 +142,10 @@ class BarcodeScannerActivity : AppCompatActivity() {
                 .setTargetResolution(android.util.Size(1280, 720))
                 .build()
                 .also {
-                    it.setAnalyzer(cameraExecutor, BarcodeAnalyzer { barcodes ->
-                        processBarcodes(barcodes)
+                    it.setAnalyzer(cameraExecutor, BarcodeAnalyzer { barcodes, imageProxy ->
+                        if (focusAchieved) {
+                            processBarcodes(barcodes, imageProxy)
+                        } // else ignore until focus is achieved
                     })
                 }
 
@@ -126,30 +153,66 @@ class BarcodeScannerActivity : AppCompatActivity() {
 
             try {
                 cameraProvider.unbindAll()
-                cameraProvider.bindToLifecycle(this, cameraSelector, preview, imageAnalyzer)
-                Log.d(TAG, "Camera started successfully")
+                camera = cameraProvider.bindToLifecycle(this, cameraSelector, preview, imageAnalyzer)
+                Log.d(TAG, "Camera started successfully with continuous autofocus")
+                startFocusMetering()
             } catch (exc: Exception) {
                 Log.e(TAG, "Camera binding failed", exc)
             }
 
         }, ContextCompat.getMainExecutor(this))
     }
+
+    private fun startFocusMetering() {
+        val viewFinder = binding.viewFinder
+        val factory = viewFinder.meteringPointFactory
+        val point = factory.createPoint(viewFinder.width / 2f, viewFinder.height / 2f)
+        val action = FocusMeteringAction.Builder(point, FocusMeteringAction.FLAG_AF)
+            .setAutoCancelDuration(2, java.util.concurrent.TimeUnit.SECONDS)
+            .build()
+        isFocusing = true
+        focusAchieved = false
+        camera?.cameraControl?.startFocusAndMetering(action)?.addListener({
+            isFocusing = false
+            focusAchieved = true
+            // Optionally hide focus indicator here
+        }, ContextCompat.getMainExecutor(this))
+        // Optionally show focus indicator (scan_overlay) while focusing
+    }
     
-    private fun processBarcodes(barcodes: List<Barcode>) {
+    private fun processBarcodes(barcodes: List<Barcode>, imageProxy: ImageProxy? = null) {
         if (barcodes.isNotEmpty() && !isProcessingBarcode) {
             isProcessingBarcode = true
             val barcode = barcodes.first()
             barcode.rawValue?.let { value ->
                 var format = getReadableFormat(barcode.format)
                 Log.i(TAG, "Barcode detected: '$value' (Format: $format, Raw format: ${barcode.format})")
-                
-                if (format == "UNKNOWN") {
-                    val guessedFormat = guessFormatFromValue(value)
-                    Log.w(TAG, "Unknown barcode format detected. Raw format code: ${barcode.format}. Guessing format: $guessedFormat based on value pattern.")
-                    format = guessedFormat
+                if (format == "UNKNOWN" && imageProxy != null) {
+                    // Try ZXing fallback
+                    try {
+                        val zxingResult = decodeWithZXing(imageProxy)
+                        if (zxingResult != null) {
+                            Log.i(TAG, "ZXing fallback succeeded: '${zxingResult.text}' (${zxingResult.barcodeFormat})")
+                            processDetectedBarcode(barcode, zxingResult.text, zxingResult.barcodeFormat.toString())
+                            imageProxy.close()
+                            return
+                        } else {
+                            Log.w(TAG, "ZXing fallback failed. No barcode detected.")
+                        }
+                    } catch (e: Exception) {
+                        Log.e(TAG, "ZXing fallback error: ${e.message}", e)
+                    }
+                    // If ZXing also fails, show scan again dialog
+                    runOnUiThread { showScanAgainDialog() }
+                    imageProxy.close()
+                    isProcessingBarcode = false
+                    return
                 }
-                
-                // Process the barcode immediately to avoid multiple processing
+                if (format == "UNKNOWN") {
+                    runOnUiThread { showScanAgainDialog() }
+                    isProcessingBarcode = false
+                    return
+                }
                 processDetectedBarcode(barcode, value, format)
             } ?: run {
                 Log.w(TAG, "Barcode detected but rawValue is null")
@@ -423,7 +486,45 @@ class BarcodeScannerActivity : AppCompatActivity() {
         Log.d(TAG, "Barcode scanner activity destroyed")
     }
 
-    private inner class BarcodeAnalyzer(private val onBarcodesDetected: (List<Barcode>) -> Unit) :
+    private fun decodeWithZXing(imageProxy: ImageProxy): Result? {
+        val buffer = imageProxy.planes[0].buffer
+        val bytes = ByteArray(buffer.remaining())
+        buffer.get(bytes)
+        val width = imageProxy.width
+        val height = imageProxy.height
+        val yuvImage = android.graphics.YuvImage(bytes, android.graphics.ImageFormat.NV21, width, height, null)
+        val out = java.io.ByteArrayOutputStream()
+        yuvImage.compressToJpeg(android.graphics.Rect(0, 0, width, height), 100, out)
+        val jpegBytes = out.toByteArray()
+        val bitmap = BitmapFactory.decodeByteArray(jpegBytes, 0, jpegBytes.size)
+        val intArray = IntArray(bitmap.width * bitmap.height)
+        bitmap.getPixels(intArray, 0, bitmap.width, 0, 0, bitmap.width, bitmap.height)
+        val source: LuminanceSource = RGBLuminanceSource(bitmap.width, bitmap.height, intArray)
+        val bitmapZX = BinaryBitmap(HybridBinarizer(source))
+        return try {
+            MultiFormatReader().decode(bitmapZX)
+        } catch (e: NotFoundException) {
+            null
+        }
+    }
+
+    private fun showScanAgainDialog() {
+        val builder = androidx.appcompat.app.AlertDialog.Builder(this)
+        builder.setTitle("Barcode Not Recognized")
+        builder.setMessage("The barcode could not be recognized. Please try again or enter it manually.")
+        builder.setPositiveButton("Scan Again") { dialog, _ ->
+            dialog.dismiss()
+            isProcessingBarcode = false
+        }
+        builder.setNegativeButton("Manual Entry") { dialog, _ ->
+            dialog.dismiss()
+            finish() // Or launch manual entry activity/fragment
+        }
+        builder.setCancelable(false)
+        builder.show()
+    }
+
+    private inner class BarcodeAnalyzer(private val onBarcodesDetected: (List<Barcode>, ImageProxy?) -> Unit) :
         ImageAnalysis.Analyzer {
 
         @androidx.camera.core.ExperimentalGetImage
@@ -434,21 +535,20 @@ class BarcodeScannerActivity : AppCompatActivity() {
                     mediaImage,
                     imageProxy.imageInfo.rotationDegrees
                 )
-                
                 barcodeScanner.process(image)
                     .addOnSuccessListener { barcodes ->
                         if (barcodes.isNotEmpty()) {
                             Log.d(TAG, "Found ${barcodes.size} barcode(s) in frame")
-                            onBarcodesDetected(barcodes)
                         }
+                        onBarcodesDetected(barcodes, imageProxy)
                     }
                     .addOnFailureListener { exception ->
                         Log.e(TAG, "Barcode scanning failed", exception)
-                        // Reset processing flag on failure
                         isProcessingBarcode = false
+                        imageProxy.close()
                     }
                     .addOnCompleteListener {
-                        imageProxy.close()
+                        if (!isProcessingBarcode) imageProxy.close()
                     }
             } else {
                 imageProxy.close()
