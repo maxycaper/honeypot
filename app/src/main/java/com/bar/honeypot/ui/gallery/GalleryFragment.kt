@@ -57,6 +57,7 @@ import com.bar.honeypot.databinding.FragmentGalleryBinding
 import com.bar.honeypot.model.BarcodeData
 import com.bar.honeypot.ui.scanner.BarcodeScannerActivity
 import com.google.android.material.snackbar.Snackbar
+import androidx.exifinterface.media.ExifInterface
 
 class GalleryFragment : Fragment() {
 
@@ -488,10 +489,24 @@ class GalleryFragment : Fragment() {
             
             if (hasProductImage) {
                 if (hasLocalImage) {
-                    // Load local captured image
+                    // Load local captured image with orientation correction
                     try {
-                        val bitmap = BitmapFactory.decodeFile(productImageUrl)
+                        var bitmap = BitmapFactory.decodeFile(productImageUrl)
                         if (bitmap != null) {
+                            // Read Exif orientation and rotate if needed
+                            val exif = ExifInterface(productImageUrl)
+                            val orientation = exif.getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL)
+                            val matrix = android.graphics.Matrix()
+                            when (orientation) {
+                                ExifInterface.ORIENTATION_ROTATE_90 -> matrix.postRotate(90f)
+                                ExifInterface.ORIENTATION_ROTATE_180 -> matrix.postRotate(180f)
+                                ExifInterface.ORIENTATION_ROTATE_270 -> matrix.postRotate(270f)
+                                ExifInterface.ORIENTATION_FLIP_HORIZONTAL -> matrix.preScale(-1f, 1f)
+                                ExifInterface.ORIENTATION_FLIP_VERTICAL -> matrix.preScale(1f, -1f)
+                            }
+                            if (orientation != ExifInterface.ORIENTATION_NORMAL) {
+                                bitmap = Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+                            }
                             barcodeImageView.setImageBitmap(bitmap)
                             barcodeImageView.visibility = View.VISIBLE
                             addPhotoButton.visibility = View.GONE
@@ -1018,10 +1033,24 @@ class GalleryFragment : Fragment() {
             
             if (hasProductImage) {
                 if (hasLocalImage) {
-                    // Load local captured image
+                    // Load local captured image with orientation correction
                     try {
-                        val bitmap = BitmapFactory.decodeFile(barcode.productImageUrl)
+                        var bitmap = BitmapFactory.decodeFile(barcode.productImageUrl)
                         if (bitmap != null) {
+                            // Read Exif orientation and rotate if needed
+                            val exif = ExifInterface(barcode.productImageUrl)
+                            val orientation = exif.getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL)
+                            val matrix = android.graphics.Matrix()
+                            when (orientation) {
+                                ExifInterface.ORIENTATION_ROTATE_90 -> matrix.postRotate(90f)
+                                ExifInterface.ORIENTATION_ROTATE_180 -> matrix.postRotate(180f)
+                                ExifInterface.ORIENTATION_ROTATE_270 -> matrix.postRotate(270f)
+                                ExifInterface.ORIENTATION_FLIP_HORIZONTAL -> matrix.preScale(-1f, 1f)
+                                ExifInterface.ORIENTATION_FLIP_VERTICAL -> matrix.preScale(1f, -1f)
+                            }
+                            if (orientation != ExifInterface.ORIENTATION_NORMAL) {
+                                bitmap = Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+                            }
                             productImageView.setImageBitmap(bitmap)
                             productImageView.visibility = View.VISIBLE
                             addPhotoButton.visibility = View.GONE

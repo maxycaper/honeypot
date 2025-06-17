@@ -49,8 +49,7 @@
                         android:layout_height="match_parent"
                         android:background="#20FFFFFF"
                         android:contentDescription="Product image"
-                        android:padding="8dp"
-                        android:scaleType="fitCenter"
+                        android:scaleType="centerCrop"
                         android:visibility="gone" />
 
                     <Button
