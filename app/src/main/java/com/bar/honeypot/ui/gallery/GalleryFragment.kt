@@ -120,7 +120,6 @@ class GalleryFragment : Fragment() {
     ) { success ->
         if (success && currentBarcodeForPhoto != null) {
             Log.i(TAG, "Product photo captured successfully")
-            
             // Save the captured photo path to the barcode
             currentBarcodeForPhoto?.let { barcode ->
                 // Check if this barcode exists in the gallery already
@@ -130,9 +129,13 @@ class GalleryFragment : Fragment() {
                     galleryViewModel.updateBarcodeProductImage(position, currentPhotoPath)
                     saveBarcodesToSharedPreferences()
                     Toast.makeText(context, "Product photo saved", Toast.LENGTH_SHORT).show()
-                    
-                    // Refresh the dialog to show the new image
-                    showBarcodeDisplayDialog(barcode, position)
+                    // Fetch the latest barcode data before showing the dialog
+                    val updatedBarcode = galleryViewModel.barcodes.value?.get(position)
+                    if (updatedBarcode != null) {
+                        showBarcodeDisplayDialog(updatedBarcode, position)
+                    } else {
+                        showBarcodeDisplayDialog(barcode, position)
+                    }
                 } else {
                     // This is a new barcode from confirmation dialog, save it with the image
                     val success = galleryViewModel.addBarcode(
@@ -141,7 +144,6 @@ class GalleryFragment : Fragment() {
                         title = barcode.title,
                         productImageUrl = currentPhotoPath
                     )
-                    
                     if (success) {
                         saveBarcodesToSharedPreferences()
                         Toast.makeText(context, "Barcode and photo saved to gallery", Toast.LENGTH_SHORT).show()

@@ -282,6 +282,12 @@ class MainActivity : AppCompatActivity() {
             val newItem = menu.add(R.id.gallery_group, newItemId, Menu.NONE, galleryName)
             newItem.setIcon(R.drawable.ic_menu_gallery)
             newItem.isCheckable = true
+            // Add delete icon to the new gallery (same as restoreGalleriesToMenu)
+            newItem.setActionView(R.layout.menu_item_delete)
+            val deleteView = newItem.actionView
+            deleteView?.findViewById<View>(R.id.btn_delete_gallery)?.setOnClickListener {
+                showDeleteGalleryDialog(galleryName, navView, navController)
+            }
             
             Toast.makeText(this, "Gallery '$galleryName' created", Toast.LENGTH_SHORT).show()
             
