@@ -35,8 +35,15 @@ import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
 import android.view.Window
 import android.app.Dialog
+import com.bar.honeypot.ui.gallery.GalleryDrawerAdapter
+import com.bar.honeypot.ui.gallery.GalleryItem
+import com.bar.honeypot.ui.gallery.GalleryViewModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
+import androidx.core.content.ContextCompat
 
-class MainActivity : AppCompatActivity() {
+class MainActivity : AppCompatActivity(), GalleryDrawerAdapter.GalleryDrawerListener {
 
     private lateinit var appBarConfiguration: AppBarConfiguration
     private lateinit var binding: ActivityMainBinding
@@ -44,6 +51,9 @@ class MainActivity : AppCompatActivity() {
     private lateinit var sharedPreferences: SharedPreferences
     private val PREFS_NAME = "HoneypotPrefs"
     private val GALLERIES_KEY = "savedGalleries"
+    private lateinit var galleryViewModel: GalleryViewModel
+    private lateinit var galleryDrawerAdapter: GalleryDrawerAdapter
+    private var currentGalleryId: String? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -60,7 +70,11 @@ class MainActivity : AppCompatActivity() {
 
         // Initialize SharedPreferences
         sharedPreferences = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        
+
+        // Initialize GalleryViewModel
+        galleryViewModel = ViewModelProvider(this).get(GalleryViewModel::class.java)
+        galleryViewModel.loadGalleries(sharedPreferences)
+
         // Load saved galleries
         loadSavedGalleries()
 
@@ -91,9 +105,18 @@ class MainActivity : AppCompatActivity() {
             showAddGalleryDialog(navView, navController)
         } else {
             // Navigate to the first gallery
-            val firstGallery = customGalleries.first()
-            val bundle = bundleOf("gallery_name" to firstGallery)
-            navController.navigate(R.id.nav_gallery, bundle)
+            val firstGallery = galleryViewModel.galleries.value?.firstOrNull()
+            if (firstGallery != null) {
+                val bundle =
+                    bundleOf("gallery_name" to firstGallery.name, "gallery_id" to firstGallery.id)
+                navController.navigate(R.id.nav_gallery, bundle)
+                updateCurrentGallery(firstGallery.id)
+            } else {
+                // Fallback to old system if galleries not migrated yet
+                val firstGalleryName = customGalleries.first()
+                val bundle = bundleOf("gallery_name" to firstGalleryName)
+                navController.navigate(R.id.nav_gallery, bundle)
+            }
         }
     }
     
@@ -308,6 +331,20 @@ class MainActivity : AppCompatActivity() {
         fabAddGalleryHeader.setOnClickListener {
             showAddGalleryDialog(navView, navController)
         }
+
+        // Setup RecyclerView for hierarchical galleries in the drawer
+        val galleryRecyclerView =
+            headerView.findViewById<RecyclerView>(R.id.recycler_view_galleries)
+        galleryRecyclerView?.let {
+            it.layoutManager = LinearLayoutManager(this)
+            galleryDrawerAdapter = GalleryDrawerAdapter(emptyList(), this)
+            it.adapter = galleryDrawerAdapter
+
+            // Observe gallery changes
+            galleryViewModel.galleries.observe(this) { galleries ->
+                galleryDrawerAdapter.updateGalleries(galleries)
+            }
+        }
     }
 
     private fun setAppVersion() {
@@ -342,13 +379,132 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
-        // Inflate the menu; this adds items to the action bar if it is present.
         menuInflater.inflate(R.menu.main, menu)
+        // Change the overflow icon to a gear
+        binding.appBarMain.toolbar.overflowIcon = ContextCompat.getDrawable(this, R.drawable.ic_settings_gear)
         return true
     }
 
     override fun onSupportNavigateUp(): Boolean {
         val navController = findNavController(R.id.nav_host_fragment_content_main)
         return navController.navigateUp(appBarConfiguration) || super.onSupportNavigateUp()
+    }
+
+    // --- GalleryDrawerListener implementation ---
+    override fun onGalleryClicked(gallery: GalleryItem) {
+        // Navigate to gallery fragment with gallery id
+        val navController = findNavController(R.id.nav_host_fragment_content_main)
+        val bundle = bundleOf("gallery_name" to gallery.name, "gallery_id" to gallery.id)
+        navController.navigate(R.id.nav_gallery, bundle)
+        binding.drawerLayout.closeDrawers()
+
+        // Update current gallery
+        updateCurrentGallery(gallery.id)
+    }
+
+    override fun onCreateSubGallery(parent: GalleryItem) {
+        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val input = EditText(this)
+        input.hint = "Sub-gallery name"
+
+        AlertDialog.Builder(this)
+            .setTitle("Create Sub-gallery")
+            .setView(input)
+            .setPositiveButton("Create") { dialog, _ ->
+                val name = input.text.toString().trim()
+                if (name.isNotEmpty()) {
+                    galleryViewModel.addGallery(name, parent.id, prefs)
+                    Toast.makeText(this, "Sub-gallery created", Toast.LENGTH_SHORT).show()
+                }
+                dialog.dismiss()
+            }
+            .setNegativeButton("Cancel") { dialog, _ -> dialog.dismiss() }
+            .show()
+    }
+
+    override fun onRenameGallery(gallery: GalleryItem) {
+        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val input = EditText(this)
+        input.setText(gallery.name)
+
+        AlertDialog.Builder(this)
+            .setTitle("Rename Gallery")
+            .setView(input)
+            .setPositiveButton("Rename") { dialog, _ ->
+                val name = input.text.toString().trim()
+                if (name.isNotEmpty()) {
+                    galleryViewModel.renameGallery(gallery.id, name, prefs)
+                    Toast.makeText(this, "Gallery renamed", Toast.LENGTH_SHORT).show()
+
+                    // Update title if this is the current gallery
+                    if (gallery.id == currentGalleryId) {
+                        supportActionBar?.title = name
+                    }
+                }
+                dialog.dismiss()
+            }
+            .setNegativeButton("Cancel") { dialog, _ -> dialog.dismiss() }
+            .show()
+    }
+
+    override fun onExportGallery(gallery: GalleryItem) {
+        // Show a toast notification for now
+        Toast.makeText(
+            this,
+            "Export functionality coming soon for gallery: ${gallery.name}",
+            Toast.LENGTH_SHORT
+        ).show()
+
+        // Future implementation would handle exporting the gallery data to a file
+        // This could include QR codes, barcodes, and other gallery information
+    }
+
+    override fun onDeleteGallery(gallery: GalleryItem) {
+        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        AlertDialog.Builder(this)
+            .setTitle("Delete Gallery")
+            .setMessage("Are you sure you want to delete '${gallery.name}'? This cannot be undone.")
+            .setPositiveButton("Delete") { dialog, _ ->
+                galleryViewModel.removeGallery(gallery.id, prefs)
+                Toast.makeText(this, "Gallery deleted", Toast.LENGTH_SHORT).show()
+
+                // If deleted the current gallery, navigate to another gallery
+                if (gallery.id == currentGalleryId) {
+                    val galleries = galleryViewModel.galleries.value
+                    if (!galleries.isNullOrEmpty()) {
+                        val firstGallery = galleries.first()
+                        val navController = findNavController(R.id.nav_host_fragment_content_main)
+                        val bundle = bundleOf(
+                            "gallery_name" to firstGallery.name,
+                            "gallery_id" to firstGallery.id
+                        )
+                        navController.navigate(R.id.nav_gallery, bundle)
+                        currentGalleryId = firstGallery.id
+                    }
+                }
+                dialog.dismiss()
+            }
+            .setNegativeButton("Cancel") { dialog, _ -> dialog.dismiss() }
+            .show()
+    }
+
+    fun updateCurrentGallery(gallery: GalleryItem) {
+        val navController = findNavController(R.id.nav_host_fragment_content_main)
+        val bundle = bundleOf("gallery_name" to gallery.name, "gallery_id" to gallery.id)
+        navController.navigate(R.id.nav_gallery, bundle)
+        binding.drawerLayout.closeDrawers()
+
+        // Update current gallery
+        currentGalleryId = gallery.id
+    }
+
+    fun updateCurrentGallery(galleryId: String) {
+        // Update current gallery ID
+        currentGalleryId = galleryId
+
+        // Update the adapter
+        if (::galleryDrawerAdapter.isInitialized) {
+            galleryDrawerAdapter.setCurrentGallery(galleryId)
+        }
     }
 }

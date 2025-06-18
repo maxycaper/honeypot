@@ -58,6 +58,7 @@ import com.bar.honeypot.model.BarcodeData
 import com.bar.honeypot.ui.scanner.BarcodeScannerActivity
 import com.google.android.material.snackbar.Snackbar
 import androidx.exifinterface.media.ExifInterface
+import com.bar.honeypot.MainActivity
 
 class GalleryFragment : Fragment() {
 
@@ -72,7 +73,9 @@ class GalleryFragment : Fragment() {
     // This property is only valid between onCreateView and
     // onDestroyView.
     private val binding get() = _binding!!
-    
+
+    private var galleryId: String? = null
+
     private val requestCameraPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { isGranted: Boolean ->
@@ -188,6 +191,12 @@ class GalleryFragment : Fragment() {
                 galleryName = it.getString("gallery_name", "Gallery")
                 galleryViewModel.setGalleryName(galleryName)
             }
+
+            // Get gallery ID if available
+            if (it.containsKey("gallery_id")) {
+                galleryId = it.getString("gallery_id")
+                // Use the ID for specific gallery operations if needed
+            }
         }
 
         // Set the gallery name in the toolbar title
@@ -199,7 +208,14 @@ class GalleryFragment : Fragment() {
         binding.fabAddBarcode.setOnClickListener {
             showBarcodeActionChoiceDialog()
         }
-        
+
+        // Update activity with current gallery ID
+        (activity as? MainActivity)?.let { mainActivity ->
+            galleryId?.let { id ->
+                mainActivity.updateCurrentGallery(id)
+            }
+        }
+
         // Set up the RecyclerView
         setupRecyclerView()
         
