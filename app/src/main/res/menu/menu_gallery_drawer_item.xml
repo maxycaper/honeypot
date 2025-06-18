@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/action_create_subgallery"
+        android:title="Add Sub-Gallery"
+        android:icon="@android:drawable/ic_menu_add" />
+    <item
+        android:id="@+id/action_rename_gallery"
+        android:title="Rename Gallery"
+        android:icon="@android:drawable/ic_menu_edit" />
+    <item
+        android:id="@+id/action_export_gallery"
+        android:title="Export Gallery"
+        android:icon="@android:drawable/ic_menu_share" />
+    <item
+        android:id="@+id/action_delete_gallery"
+        android:title="Delete Gallery"
+        android:icon="@android:drawable/ic_menu_delete" />
+</menu>

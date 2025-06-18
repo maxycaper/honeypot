@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/container_gallery_item"
+    android:layout_width="match_parent"
+    android:layout_height="48dp"
+    android:orientation="horizontal"
+    android:gravity="center_vertical"
+    android:background="?attr/selectableItemBackground"
+    android:paddingStart="8dp"
+    android:paddingEnd="8dp">
+
+    <ImageView
+        android:id="@+id/icon_expand"
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        android:layout_marginEnd="4dp"
+        android:visibility="gone"
+        android:contentDescription="Expand/collapse" />
+
+    <TextView
+        android:id="@+id/text_gallery_name"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:text="Gallery Name"
+        android:textAppearance="?attr/textAppearanceListItem"
+        android:maxLines="1"
+        android:ellipsize="end"
+        android:paddingStart="8dp"
+        android:paddingEnd="8dp" />
+
+    <ImageView
+        android:id="@+id/btn_gallery_settings"
+        android:layout_width="28dp"
+        android:layout_height="28dp"
+        android:background="@drawable/gallery_settings_button_bg"
+        android:src="@drawable/ic_settings_gear"
+        android:contentDescription="More options"
+        android:clickable="true"
+        android:focusable="true"
+        android:padding="2dp" />
+
+</LinearLayout>

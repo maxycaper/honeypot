@@ -1,10 +1,12 @@
 package com.bar.honeypot.ui.gallery
 
+import android.content.SharedPreferences
 import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import com.bar.honeypot.model.BarcodeData
+import com.bar.honeypot.ui.gallery.GalleryItem
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 
@@ -19,7 +21,11 @@ class GalleryViewModel : ViewModel() {
     
     private val _currentGalleryName = MutableLiveData<String>()
     val currentGalleryName: LiveData<String> = _currentGalleryName
-    
+
+    // Hierarchical gallery structure (top-level galleries only)
+    private val _galleries = MutableLiveData<MutableList<GalleryItem>>(mutableListOf())
+    val galleries: LiveData<MutableList<GalleryItem>> = _galleries
+
     init {
         _barcodes.value = mutableListOf()
         Log.d(TAG, "GalleryViewModel initialized")
@@ -211,5 +217,73 @@ class GalleryViewModel : ViewModel() {
         
         Log.w(TAG, "Invalid position for product image removal: $position")
         return false
+    }
+
+    // CRUD for galleries and sub-galleries
+    fun addGallery(
+        name: String,
+        parentId: String? = null,
+        prefs: SharedPreferences? = null
+    ): GalleryItem {
+        val newGallery = GalleryItem(name = name, parentId = parentId)
+        if (parentId == null) {
+            // Top-level gallery
+            _galleries.value?.add(newGallery)
+        } else {
+            // Sub-gallery: find parent and add as child
+            val parent = findGalleryById(parentId)
+            parent?.children?.add(newGallery)
+        }
+        _galleries.value = _galleries.value // Trigger observers
+        prefs?.let { saveGalleries(it) }
+        return newGallery
+    }
+
+    fun removeGallery(id: String, prefs: SharedPreferences? = null) {
+        // Remove from top-level or from parent's children
+        _galleries.value?.removeAll { it.id == id }
+        _galleries.value?.forEach { parent ->
+            parent.children.removeAll { it.id == id }
+        }
+        _galleries.value = _galleries.value
+        prefs?.let { saveGalleries(it) }
+    }
+
+    fun renameGallery(id: String, newName: String, prefs: SharedPreferences? = null) {
+        findGalleryById(id)?.name = newName
+        _galleries.value = _galleries.value
+        prefs?.let { saveGalleries(it) }
+    }
+
+    fun findGalleryById(id: String): GalleryItem? {
+        _galleries.value?.forEach { gallery ->
+            if (gallery.id == id) return gallery
+            gallery.children.forEach { child ->
+                if (child.id == id) return child
+            }
+        }
+        return null
+    }
+
+    fun saveGalleries(prefs: SharedPreferences) {
+        val editor = prefs.edit()
+        val galleriesJson = Gson().toJson(_galleries.value)
+        editor.putString("hierarchical_galleries", galleriesJson)
+        editor.apply()
+    }
+
+    fun loadGalleries(prefs: SharedPreferences) {
+        val galleriesJson = prefs.getString("hierarchical_galleries", null)
+        if (!galleriesJson.isNullOrEmpty()) {
+            try {
+                val type = object : TypeToken<MutableList<GalleryItem>>() {}.type
+                val loaded: MutableList<GalleryItem> = Gson().fromJson(galleriesJson, type)
+                _galleries.value = loaded
+            } catch (e: Exception) {
+                _galleries.value = mutableListOf()
+            }
+        } else {
+            _galleries.value = mutableListOf()
+        }
     }
 }
