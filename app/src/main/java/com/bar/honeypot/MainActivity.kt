@@ -455,6 +455,7 @@ class MainActivity : AppCompatActivity(), GalleryDrawerAdapter.GalleryDrawerList
             Toast.LENGTH_SHORT
         ).show()
 
+
         // Future implementation would handle exporting the gallery data to a file
         // This could include QR codes, barcodes, and other gallery information
     }
