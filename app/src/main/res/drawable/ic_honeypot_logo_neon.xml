@@ -5,40 +5,41 @@
     android:viewportWidth="100"
     android:viewportHeight="100">
 
-    <!-- Outer glow circle -->
-    <path
-        android:fillColor="#1A000000"
-        android:pathData="M50,50m-48,0a48,48 0,1 1,96 0a48,48 0,1 1,-96 0"
-        android:fillAlpha="0.3"/>
-    
-    <!-- Inner dark circle -->
+    <!-- Black circle background -->
     <path
         android:fillColor="#000000"
         android:pathData="M50,50m-40,0a40,40 0,1 1,80 0a40,40 0,1 1,-80 0"/>
 
-    <!-- Honey jar glow effect -->
+    <!-- Outer cyan glow -->
+    <path
+        android:strokeColor="#00E5FF"
+        android:strokeWidth="2"
+        android:strokeAlpha="0.5"
+        android:pathData="M50,50m-38,0a38,38 0,1 1,76 0a38,38 0,1 1,-76 0"/>
+
+    <!-- Honey jar outer glow -->
     <path
         android:strokeColor="#FF00FF"
-        android:strokeWidth="1.5"
-        android:strokeAlpha="0.6"
+        android:strokeWidth="2"
+        android:strokeAlpha="0.5"
         android:pathData="M35,30 L65,30 C68,30 70,32 70,35 L67,65 C67,68 65,70 62,70 L38,70 C35,70 33,68 33,65 L30,35 C30,32 32,30 35,30 Z"/>
 
-    <!-- Honey jar main outline -->
+    <!-- Honey jar main neon -->
     <path
         android:strokeColor="#FF47E1"
-        android:strokeWidth="2"
+        android:strokeWidth="1.5"
         android:pathData="M35,30 L65,30 C68,30 70,32 70,35 L67,65 C67,68 65,70 62,70 L38,70 C35,70 33,68 33,65 L30,35 C30,32 32,30 35,30 Z"/>
 
     <!-- Jar lid -->
     <path
-        android:strokeColor="#5C8CFF"
-        android:strokeWidth="2"
+        android:strokeColor="#00E5FF"
+        android:strokeWidth="1.5"
         android:pathData="M40,25 L60,25 L58,30 L42,30 Z"/>
 
     <!-- HONEY text -->
     <path
         android:strokeColor="#FF47E1"
-        android:strokeWidth="1.5"
+        android:strokeWidth="1"
         android:pathData="M40,45 L60,45"
         android:strokeLineCap="round"/>
 </vector> 

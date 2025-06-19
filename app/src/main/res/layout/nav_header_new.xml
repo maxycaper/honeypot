@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@drawable/gradient_app_bar"
+    android:gravity="bottom"
+    android:orientation="vertical"
+    android:paddingLeft="16dp"
+    android:paddingTop="48dp"
+    android:paddingRight="16dp"
+    android:paddingBottom="16dp"
+    android:theme="@style/ThemeOverlay.AppCompat.Dark">
+
+    <ImageView
+        android:id="@+id/imageViewLogo"
+        android:layout_width="80dp"
+        android:layout_height="80dp"
+        android:layout_marginBottom="16dp"
+        android:contentDescription="@string/app_name"
+        android:src="@drawable/ic_hp_logo_small" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/app_name"
+        android:textAppearance="@style/TextAppearance.AppCompat.Headline"
+        android:textColor="@android:color/white"
+        android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/textViewSubtitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:text="Organize your barcodes"
+        android:textAppearance="@style/TextAppearance.AppCompat.Body1"
+        android:textColor="@android:color/white" />
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:layout_marginTop="16dp"
+        android:layout_marginBottom="8dp"
+        android:background="#40FFFFFF" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="8dp"
+        android:text="Your Galleries"
+        android:textColor="@android:color/white"
+        android:textSize="16sp"
+        android:textStyle="bold" />
+
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/fab_add_gallery_header"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="end"
+        android:layout_marginTop="8dp"
+        android:layout_marginEnd="8dp"
+        android:backgroundTint="@android:color/transparent"
+        android:contentDescription="Add Gallery"
+        app:borderWidth="0dp"
+        app:elevation="2dp"
+        app:fabSize="mini"
+        app:srcCompat="@android:drawable/ic_input_add"
+        app:tint="@android:color/white" />
+
+</LinearLayout>

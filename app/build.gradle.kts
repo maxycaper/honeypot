@@ -81,12 +81,13 @@ dependencies {
     testImplementation("org.mockito.kotlin:mockito-kotlin:4.1.0")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.1")
     testImplementation("org.robolectric:robolectric:4.10.3")
-    
-    // Android testing dependencies
+
+    // Android UI testing
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation("androidx.test:core-ktx:1.5.0")
     androidTestImplementation("androidx.test:rules:1.5.0")
     androidTestImplementation("androidx.fragment:fragment-testing:1.6.1")
     androidTestImplementation("androidx.test.espresso:espresso-intents:3.5.1")
+    androidTestImplementation("androidx.test.espresso:espresso-contrib:3.5.1")
 }
