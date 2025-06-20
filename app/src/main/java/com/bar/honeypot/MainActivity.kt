@@ -25,8 +25,6 @@ import com.bar.honeypot.util.VersionHelper
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
-import android.widget.Button
-import android.content.DialogInterface
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
 import android.view.Window
@@ -34,9 +32,7 @@ import android.app.Dialog
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.bar.honeypot.ui.gallery.GalleryListAdapter
 import android.view.WindowManager
-import com.google.android.material.textfield.TextInputEditText
-import com.google.android.material.textfield.TextInputLayout
-import android.view.ViewGroup
+import android.widget.Button
 import com.bar.honeypot.ui.gallery.GalleryItem
 
 class MainActivity : AppCompatActivity() {
@@ -121,16 +117,15 @@ class MainActivity : AppCompatActivity() {
         // Create a custom dialog
         val dialog = Dialog(this)
         dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
-        dialog.setContentView(R.layout.dialog_add_gallery)
+        dialog.setContentView(R.layout.dialog_create_gallery)
         
         // Make dialog background transparent to show rounded corners
         dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
         
         // Get references to dialog views
-        val nameInput = dialog.findViewById<TextInputEditText>(R.id.editTextGalleryName)
-        val nameLayout = nameInput.parent as TextInputLayout
-        val cancelButton = dialog.findViewById<Button>(R.id.buttonCancel)
-        val createButton = dialog.findViewById<Button>(R.id.buttonCreate)
+        val nameInput = dialog.findViewById<EditText>(R.id.edit_gallery_name)
+        val cancelButton = dialog.findViewById<Button>(R.id.btn_create_gallery_cancel)
+        val createButton = dialog.findViewById<Button>(R.id.btn_create_gallery_confirm)
         
         // Set click listeners
         cancelButton.setOnClickListener {
@@ -142,10 +137,10 @@ class MainActivity : AppCompatActivity() {
             
             when {
                 galleryName.isEmpty() -> {
-                    nameLayout.error = "Gallery name cannot be empty"
+                    nameInput.error = "Gallery name cannot be empty"
                 }
                 customGalleries.contains(galleryName) -> {
-                    nameLayout.error = "Gallery with this name already exists"
+                    nameInput.error = "Gallery with this name already exists"
                 }
                 else -> {
                     // Add new gallery
