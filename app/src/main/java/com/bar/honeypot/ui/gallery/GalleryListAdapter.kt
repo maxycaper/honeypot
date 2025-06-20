@@ -8,7 +8,8 @@ import androidx.recyclerview.widget.RecyclerView
 import com.bar.honeypot.databinding.ItemGalleryBinding
 
 class GalleryListAdapter(
-    private val onItemClick: (GalleryItem) -> Unit
+    private val onItemClick: (GalleryItem) -> Unit,
+    private val onArrowClick: ((GalleryItem) -> Unit)? = null
 ) : ListAdapter<GalleryItem, GalleryListAdapter.ViewHolder>(DiffCallback) {
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
@@ -29,10 +30,19 @@ class GalleryListAdapter(
     ) : RecyclerView.ViewHolder(binding.root) {
 
         init {
+            // Set click listener for the whole item - captures clicks on any part of the card
             binding.root.setOnClickListener {
                 val position = adapterPosition
                 if (position != RecyclerView.NO_POSITION) {
                     onItemClick(getItem(position))
+                }
+            }
+
+            // Set click listener for the arrow icon (this is now redundant with full card clicking)
+            binding.arrowIcon.setOnClickListener {
+                val position = adapterPosition
+                if (position != RecyclerView.NO_POSITION) {
+                    onArrowClick?.invoke(getItem(position)) ?: onItemClick(getItem(position))
                 }
             }
         }
@@ -53,4 +63,4 @@ class GalleryListAdapter(
             }
         }
     }
-} 
+}
