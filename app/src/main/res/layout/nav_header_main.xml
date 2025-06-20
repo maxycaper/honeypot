@@ -44,17 +44,18 @@
 
     <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/fab_add_gallery_header"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
         android:layout_marginEnd="8dp"
         android:layout_marginBottom="8dp"
         android:contentDescription="Add new gallery"
-        app:backgroundTint="@color/secondary"
+        android:backgroundTint="@color/fab_vibrant_purple"
+        app:backgroundTint="@color/fab_vibrant_purple"
+        app:tint="@android:color/white"
+        app:rippleColor="#80FFFFFF"
         app:fabSize="mini"
-        app:elevation="6dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:srcCompat="@android:drawable/ic_input_add"
-        app:tint="@color/white" />
+        app:srcCompat="@drawable/ic_add_24" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

@@ -36,6 +36,7 @@
                 android:layout_height="wrap_content"
                 android:layout_gravity="center_horizontal"
                 android:layout_marginTop="16dp"
+                android:gravity="center"
                 android:orientation="vertical">
 
                 <FrameLayout
@@ -185,4 +186,4 @@
         </LinearLayout>
     </ScrollView>
 
-</androidx.cardview.widget.CardView> 
+</androidx.cardview.widget.CardView>

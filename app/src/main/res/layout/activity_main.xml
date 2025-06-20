@@ -67,11 +67,14 @@
 
     <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/fabAddGallery"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
+        android:layout_width="56dp"
+        android:layout_height="56dp"
         android:layout_margin="16dp"
-        android:src="@drawable/ic_add_24"
-        app:backgroundTint="#BB86FC"
+        android:backgroundTint="@color/fab_vibrant_purple"
+        app:backgroundTint="@color/fab_vibrant_purple"
+        app:tint="@android:color/white"
+        app:rippleColor="#80FFFFFF"
+        app:srcCompat="@drawable/ic_add_24"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         android:contentDescription="Add new gallery"/>

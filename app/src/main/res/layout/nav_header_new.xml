@@ -55,17 +55,17 @@
 
     <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/fab_add_gallery_header"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
         android:layout_gravity="end"
         android:layout_marginTop="8dp"
         android:layout_marginEnd="8dp"
-        android:backgroundTint="@android:color/transparent"
         android:contentDescription="Add Gallery"
-        app:borderWidth="0dp"
-        app:elevation="2dp"
+        android:backgroundTint="@color/fab_vibrant_purple"
+        app:backgroundTint="@color/fab_vibrant_purple"
+        app:tint="@android:color/white"
+        app:rippleColor="#80FFFFFF"
         app:fabSize="mini"
-        app:srcCompat="@android:drawable/ic_input_add"
-        app:tint="@android:color/white" />
+        app:srcCompat="@drawable/ic_add_24" />
 
 </LinearLayout>

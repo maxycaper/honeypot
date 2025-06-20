@@ -199,7 +199,10 @@ class GalleryFragment : Fragment() {
         binding.fabAddBarcode.setOnClickListener {
             showBarcodeActionChoiceDialog()
         }
-        
+
+        // Make sure the plus icon is white 
+        binding.fabAddBarcode.setColorFilter(Color.WHITE)
+
         // Set up the RecyclerView
         setupRecyclerView()
         
