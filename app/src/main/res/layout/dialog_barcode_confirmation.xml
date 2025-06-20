@@ -24,7 +24,7 @@
                 android:id="@+id/dialog_title"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:fontFamily="@font/lora"
+                android:fontFamily="sans-serif-medium"
                 android:gravity="center"
                 android:text="Save Barcode?"
                 android:textColor="@color/neon_purple"

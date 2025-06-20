@@ -94,17 +94,115 @@ class GalleryFragment : Fragment() {
             val data = result.data
             val barcodeValue = data?.getStringExtra(BarcodeScannerActivity.BARCODE_VALUE)
             val barcodeFormat = data?.getStringExtra(BarcodeScannerActivity.BARCODE_FORMAT)
-            
+
+            // CRITICAL DEBUG LOGGING
+            val productName =
+                data?.getStringExtra(BarcodeScannerActivity.BARCODE_PRODUCT_NAME) ?: ""
+            val productTitle = data?.getStringExtra(BarcodeScannerActivity.BARCODE_TITLE) ?: ""
+            val productBrand =
+                data?.getStringExtra(BarcodeScannerActivity.BARCODE_PRODUCT_BRAND) ?: ""
+            val productImageUrl =
+                data?.getStringExtra(BarcodeScannerActivity.BARCODE_PRODUCT_IMAGE_URL) ?: ""
+
+            Log.e(
+                "PRODUCT_DEBUG",
+                "SCANNER RESULT: productName='$productName', title='$productTitle', value='$barcodeValue'"
+            )
+
             Log.i(TAG, "Barcode scanned: '$barcodeValue' (Format: $barcodeFormat)")
             
             if (barcodeValue != null && barcodeFormat != null) {
-                // Check for duplicates
+                // Check if this barcode already exists in the gallery
                 if (galleryViewModel.isDuplicateBarcode(barcodeValue)) {
                     Log.w(TAG, "Duplicate barcode detected: '$barcodeValue'")
-                    Toast.makeText(context, "This barcode already exists in the gallery", Toast.LENGTH_LONG).show()
+
+                    // If this is a product barcode with product information, update it
+                    if (!productName.isNullOrEmpty()) {
+                        Log.e(
+                            "PRODUCT_DEBUG",
+                            "Updating existing barcode with product info: '$productName'"
+                        )
+
+                        try {
+                            val updated = galleryViewModel.updateBarcodeProductInfo(
+                                barcodeValue = barcodeValue,
+                                productName = productName,
+                                productBrand = productBrand,
+                                productImageUrl = productImageUrl
+                            )
+
+                            if (updated) {
+                                try {
+                                    saveBarcodesToSharedPreferences()
+                                    Toast.makeText(
+                                        context,
+                                        "Product information updated: $productName",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                } catch (e: Exception) {
+                                    Log.e(
+                                        "HONEYPOT_DEBUG",
+                                        "CRITICAL: Exception while saving to preferences: ${e.message}",
+                                        e
+                                    )
+                                    Toast.makeText(
+                                        context,
+                                        "Error saving product info: ${e.message}",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                }
+                            } else {
+                                Toast.makeText(
+                                    context,
+                                    "Failed to update product information",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            }
+                        } catch (e: Exception) {
+                            Log.e(
+                                "HONEYPOT_DEBUG",
+                                "CRITICAL: Exception during product update: ${e.message}",
+                                e
+                            )
+                            Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_SHORT)
+                                .show()
+                        }
+                    } else {
+                        Toast.makeText(
+                            context,
+                            "This barcode already exists in the gallery",
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
                     return@registerForActivityResult
                 }
-                
+
+                // DIRECT SAVE FIX: If we have a product name, save the barcode immediately
+                if (!productName.isNullOrEmpty()) {
+                    Log.e("PRODUCT_DEBUG", "DIRECT SAVE with product name: '$productName'")
+
+                    val titleToUse = productName  // Always use product name as title
+
+                    val success = galleryViewModel.addBarcode(
+                        value = barcodeValue,
+                        format = barcodeFormat,
+                        title = titleToUse,
+                        productName = productName,
+                        productImageUrl = productImageUrl,
+                        description = if (productBrand.isNotEmpty()) "Brand: $productBrand" else ""
+                    )
+
+                    if (success) {
+                        saveBarcodesToSharedPreferences()
+                        Toast.makeText(
+                            context,
+                            "Product barcode saved: $productName",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                        return@registerForActivityResult
+                    }
+                }
+
                 showBarcodeConfirmationDialog(barcodeValue, barcodeFormat, data)
             } else {
                 Log.e(TAG, "Invalid barcode data received")
@@ -461,6 +559,15 @@ class GalleryFragment : Fragment() {
             val contactInfo = data.getStringExtra(BarcodeScannerActivity.BARCODE_CONTACT_INFO) ?: ""
             
             Log.d(TAG, "Product info: name='$productName', brand='$productBrand', title='$title'")
+            Log.d(TAG, "Product image URL: '$productImageUrl'")
+            Log.d(TAG, "Contact info: '$contactInfo'")
+            Log.d(
+                TAG,
+                "Full intent extras: ${
+                    data.extras?.keySet()
+                        ?.joinToString { key -> "$key=${data.getStringExtra(key)}" }
+                }"
+            )
             
             // Create confirmation dialog
             val dialog = Dialog(ctx)
@@ -479,9 +586,14 @@ class GalleryFragment : Fragment() {
             val descriptionTextView = dialog.findViewById<TextView>(R.id.barcode_description)
             val cancelButton = dialog.findViewById<Button>(R.id.btn_barcode_cancel)
             val saveButton = dialog.findViewById<Button>(R.id.btn_barcode_save)
-            
-            // Set dialog content
-            titleTextView.text = if (title.isNotEmpty()) title else "Save Barcode"
+
+            // Set dialog content - explicitly prioritize product name
+            val displayTitle = when {
+                productName.isNotEmpty() -> productName  // Product name has highest priority
+                title.isNotEmpty() -> title
+                else -> "Save Barcode"
+            }
+            titleTextView.text = displayTitle
             valueTextView.text = barcodeValue
             formatTextView.text = "Format: $barcodeFormat"
             
@@ -533,6 +645,52 @@ class GalleryFragment : Fragment() {
                     barcodeImageView.visibility = View.VISIBLE
                     addPhotoButton.visibility = View.GONE
                     removePhotoButton.visibility = View.VISIBLE
+
+                    // Load the remote image - if the URL looks like an actual image URL
+                    if (productImageUrl.startsWith("http") &&
+                        (productImageUrl.endsWith(".jpg") ||
+                                productImageUrl.endsWith(".jpeg") ||
+                                productImageUrl.endsWith(".png") ||
+                                productImageUrl.endsWith(".gif"))
+                    ) {
+
+                        // Load the image in a background thread
+                        Thread {
+                            try {
+                                val url = java.net.URL(productImageUrl)
+                                val connection = url.openConnection() as java.net.HttpURLConnection
+                                connection.doInput = true
+                                connection.connect()
+                                val input = connection.inputStream
+                                val bitmap = BitmapFactory.decodeStream(input)
+
+                                // Update UI on main thread
+                                activity?.runOnUiThread {
+                                    if (bitmap != null) {
+                                        barcodeImageView.setImageBitmap(bitmap)
+                                        Log.i(
+                                            TAG,
+                                            "Successfully loaded remote image: $productImageUrl"
+                                        )
+                                    } else {
+                                        Log.e(
+                                            TAG,
+                                            "Failed to decode remote image: $productImageUrl"
+                                        )
+                                    }
+                                }
+                            } catch (e: Exception) {
+                                Log.e(TAG, "Error loading remote image: $productImageUrl", e)
+                                activity?.runOnUiThread {
+                                    Toast.makeText(
+                                        context,
+                                        "Failed to load product image",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                }
+                            }
+                        }.start()
+                    }
                 }
             } else {
                 // No product image available, show initial camera button
@@ -626,11 +784,27 @@ class GalleryFragment : Fragment() {
             saveButton.setOnClickListener {
                 Log.d(TAG, "Saving barcode: '$barcodeValue' ($barcodeFormat)")
                 
+                Log.d("HONEYPOT_DEBUG", "Data at save: title='$title', productName='$productName', description='$description'")
+                Log.e(
+                    "PRODUCT_DEBUG",
+                    "SAVING BARCODE: productName='$productName', title='$title', value='$barcodeValue'"
+                )
+
+                // Always use product name as title if available - with EVEN HIGHER priority
+                val titleToUse = when {
+                    productName.isNotEmpty() -> productName  // Product name always wins
+                    title.isNotEmpty() -> title
+                    else -> "Barcode: $barcodeValue"  // Fallback with value
+                }
+
+                Log.d(TAG, "Using title: '$titleToUse' for barcode '$barcodeValue'")
+                Log.e("PRODUCT_DEBUG", "FINAL TITLE: '$titleToUse'")
+
                 val success = galleryViewModel.addBarcode(
                     value = barcodeValue,
                     format = barcodeFormat,
-                    title = title,
-                    description = description,
+                    title = titleToUse,  // Use our prioritized title
+                    description = if (productBrand.isNotEmpty()) "Brand: $productBrand" else description,
                     url = url,
                     email = email,
                     phone = phone,
@@ -640,9 +814,9 @@ class GalleryFragment : Fragment() {
                     wifiType = wifiType,
                     geoLat = geoLat,
                     geoLng = geoLng,
-                    productName = productName,
+                    productName = productName,  // Ensure product name is saved
                     contactInfo = contactInfo,
-                    productImageUrl = productImageUrl
+                    productImageUrl = productImageUrl  // Save the product image URL
                 )
                 
                 if (success) {
@@ -758,10 +932,17 @@ class GalleryFragment : Fragment() {
                 }
                 
                 // Add the barcode manually
+                val isProductBarcode = barcodeFormat in listOf("EAN_13", "EAN_8", "UPC_A", "UPC_E")
+                val titleToUse = if (isProductBarcode && barcodeTitle.isEmpty()) {
+                    "Product: $barcodeValue"
+                } else {
+                    barcodeTitle
+                }
+
                 val added = galleryViewModel.addBarcode(
                     value = barcodeValue,
                     format = barcodeFormat,
-                    title = barcodeTitle
+                    title = titleToUse
                 )
                 
                 if (added) {
@@ -911,6 +1092,10 @@ class GalleryFragment : Fragment() {
             val sharedPreferences = requireActivity().getSharedPreferences("HoneypotPrefs", Context.MODE_PRIVATE)
             val editor = sharedPreferences.edit()
             editor.putString("barcodes_$galleryName", barcodesJson)
+            Log.e(
+                "HONEYPOT_DEBUG",
+                "PREFS_SAVE: gallery='$galleryName', json_length=${barcodesJson.length}"
+            )
             editor.apply()
         }
     }
@@ -918,6 +1103,10 @@ class GalleryFragment : Fragment() {
     private fun loadBarcodesFromSharedPreferences() {
         val sharedPreferences = requireActivity().getSharedPreferences("HoneypotPrefs", Context.MODE_PRIVATE)
         val barcodesJson = sharedPreferences.getString("barcodes_$galleryName", null)
+        Log.e(
+            "HONEYPOT_DEBUG",
+            "PREFS_LOAD: gallery='$galleryName', json_exists=${barcodesJson != null}, json_length=${barcodesJson?.length ?: 0}"
+        )
         galleryViewModel.loadBarcodes(galleryName, barcodesJson)
     }
 
@@ -1005,8 +1194,7 @@ class GalleryFragment : Fragment() {
             
             // Set informative title based on content - prioritize custom title over product name
             val title = when {
-                barcode.title.isNotEmpty() -> barcode.title
-                barcode.productName.isNotEmpty() && !barcode.productName.startsWith("Product:") -> barcode.productName
+                barcode.displayTitle.isNotEmpty() -> barcode.displayTitle
                 barcode.url.isNotEmpty() -> "URL Barcode"
                 barcode.email.isNotEmpty() -> "Email Barcode"
                 barcode.phone.isNotEmpty() -> "Phone Barcode"

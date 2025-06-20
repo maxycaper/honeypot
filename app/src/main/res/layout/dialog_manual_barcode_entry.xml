@@ -19,7 +19,7 @@
             android:id="@+id/dialog_title"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:fontFamily="@font/lora"
+            android:fontFamily="sans-serif-medium"
             android:gravity="center"
             android:text="Add Barcode Manually"
             android:textColor="@color/neon_purple"
@@ -113,4 +113,4 @@
 
     </LinearLayout>
 
-</androidx.cardview.widget.CardView> 
+</androidx.cardview.widget.CardView>

@@ -34,8 +34,23 @@ class BarcodeAdapter(
 
         fun bind(barcode: BarcodeData, position: Int) {
             Log.d(TAG, "Binding barcode at position $position: '${barcode.value}' (${barcode.format})")
-            
-            titleTextView.text = barcode.title.ifEmpty { "Barcode ${position + 1}" }
+            Log.d(
+                TAG,
+                "Barcode data: title='${barcode.title}', productName='${barcode.productName}'"
+            )
+            Log.e(
+                "PRODUCT_DEBUG",
+                "ADAPTER BIND: pos=$position, title='${barcode.title}', productName='${barcode.productName}', value='${barcode.value}'"
+            )
+
+            val displayTitle = when {
+                barcode.displayTitle.isNotEmpty() -> barcode.displayTitle
+                else -> "Barcode ${position + 1}"
+            }
+
+            Log.d(TAG, "Using display title: '$displayTitle'")
+            Log.e("PRODUCT_DEBUG", "ADAPTER DISPLAY: '$displayTitle'")
+            titleTextView.text = displayTitle
             valueTextView.text = barcode.value
             formatTextView.text = barcode.format
             
@@ -45,7 +60,6 @@ class BarcodeAdapter(
                 onItemClick(barcode, position)
             }
         }
-
 
     }
 
@@ -75,4 +89,4 @@ class BarcodeAdapter(
             Log.i(TAG, "Removed barcode at position $position: '${removedBarcode.value}'")
         }
     }
-} 
+}

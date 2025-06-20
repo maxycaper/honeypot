@@ -22,6 +22,14 @@ data class BarcodeData(
     val contactInfo: String = "",
     val productImageUrl: String = ""
 ) {
+    // Additional computed property for display title
+    val displayTitle: String
+        get() = when {
+            title.isNotEmpty() -> title
+            productName.isNotEmpty() -> productName
+            else -> ""
+        }
+
     fun getFormattedTimestamp(): String {
         val date = Date(timestamp)
         return date.toString()
@@ -49,8 +57,8 @@ data class BarcodeData(
             smsContent.isNotEmpty() -> "SMS"
             wifiSsid.isNotEmpty() -> "WiFi"
             productName.isNotEmpty() -> "Product"
-            geoLat != 0.0 && geoLng != 0.0 -> "Location"
             contactInfo.isNotEmpty() -> "Contact"
+            geoLat != 0.0 && geoLng != 0.0 -> "Location"
             else -> "Text"
         }
     }
@@ -58,4 +66,4 @@ data class BarcodeData(
     fun isProduct(): Boolean {
         return productName.isNotEmpty() || format.contains("EAN") || format.contains("UPC")
     }
-} 
+}
