@@ -20,6 +20,7 @@ import com.bar.honeypot.model.BarcodeData
 import com.bar.honeypot.ui.gallery.GalleryListAdapter
 import android.Manifest
 import android.app.Activity
+import android.app.AlertDialog
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Canvas
@@ -127,6 +128,85 @@ class GalleryDetailFragment : Fragment() {
         )
         recyclerViewSubgalleries.adapter = subgalleriesAdapter
 
+        // Add swipe functionality for sub-galleries
+        val subgalleryItemTouchHelper = ItemTouchHelper(object : ItemTouchHelper.SimpleCallback(
+            0, ItemTouchHelper.LEFT or ItemTouchHelper.RIGHT
+        ) {
+            override fun onMove(
+                recyclerView: RecyclerView,
+                viewHolder: RecyclerView.ViewHolder,
+                target: RecyclerView.ViewHolder
+            ): Boolean {
+                return false // We don't support moving items
+            }
+
+            override fun onSwiped(viewHolder: RecyclerView.ViewHolder, direction: Int) {
+                val position = viewHolder.adapterPosition
+                if (position != RecyclerView.NO_POSITION && position < subgalleries.size) {
+                    val subgallery = subgalleries[position]
+
+                    // Restore the item to its original state (cancel the swipe)
+                    subgalleriesAdapter.notifyItemChanged(position)
+
+                    // Handle based on direction
+                    if (direction == ItemTouchHelper.RIGHT) {
+                        // Swipe right - Edit/Update subgallery
+                        showEditSubgalleryDialog(subgallery, position)
+                    } else {
+                        // Swipe left - Delete subgallery
+                        showDeleteSubgalleryDialog(subgallery, position)
+                    }
+                }
+            }
+
+            override fun onChildDraw(
+                c: Canvas,
+                recyclerView: RecyclerView,
+                viewHolder: RecyclerView.ViewHolder,
+                dX: Float,
+                dY: Float,
+                actionState: Int,
+                isCurrentlyActive: Boolean
+            ) {
+                val itemView = viewHolder.itemView
+                val background = ColorDrawable()
+
+                if (dX > 0) { // Swiping to the right (edit)
+                    background.color =
+                        ContextCompat.getColor(requireContext(), R.color.neon_hot_pink)
+                    background.setBounds(
+                        itemView.left,
+                        itemView.top,
+                        itemView.left + dX.toInt(),
+                        itemView.bottom
+                    )
+                } else { // Swiping to the left (delete)
+                    background.color =
+                        ContextCompat.getColor(requireContext(), android.R.color.holo_red_light)
+                    background.setBounds(
+                        itemView.right + dX.toInt(),
+                        itemView.top,
+                        itemView.right,
+                        itemView.bottom
+                    )
+                }
+
+                background.draw(c)
+
+                super.onChildDraw(
+                    c,
+                    recyclerView,
+                    viewHolder,
+                    dX,
+                    dY,
+                    actionState,
+                    isCurrentlyActive
+                )
+            }
+        })
+
+        subgalleryItemTouchHelper.attachToRecyclerView(recyclerViewSubgalleries)
+
         // Setup barcodes RecyclerView
         setupBarcodesRecyclerView()
 
@@ -194,7 +274,8 @@ class GalleryDetailFragment : Fragment() {
                 val background = ColorDrawable()
 
                 // Set red background when swiping
-                background.color = Color.RED
+                background.color =
+                    ContextCompat.getColor(requireContext(), android.R.color.holo_red_light)
 
                 if (dX > 0) { // Swiping to the right
                     background.setBounds(
@@ -990,6 +1071,99 @@ class GalleryDetailFragment : Fragment() {
 
             // Cancel button
             cancelButton.setOnClickListener {
+                dialog.dismiss()
+            }
+
+            dialog.show()
+        }
+    }
+
+    private fun showEditSubgalleryDialog(subgallery: GalleryItem, position: Int) {
+        context?.let { ctx ->
+            // Create a custom dialog
+            val dialog = Dialog(ctx)
+            dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
+            dialog.setContentView(R.layout.dialog_create_subgallery)
+
+            // Make dialog background transparent to show rounded corners
+            dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+
+            // Get references to dialog views
+            val nameInput = dialog.findViewById<EditText>(R.id.edit_subgallery_name)
+            val closeButton = dialog.findViewById<ImageButton>(R.id.btn_close)
+            val cancelButton = dialog.findViewById<Button>(R.id.btn_cancel)
+            val createButton = dialog.findViewById<Button>(R.id.btn_create)
+            val titleText = dialog.findViewById<TextView>(R.id.dialog_title)
+
+            // Update UI for editing
+            titleText.text = "Edit Sub-gallery"
+            createButton.text = "UPDATE"
+            nameInput.setText(subgallery.name)
+
+            // Set click listeners
+            closeButton.setOnClickListener { dialog.dismiss() }
+            cancelButton.setOnClickListener { dialog.dismiss() }
+
+            createButton.setOnClickListener {
+                val newName = nameInput.text.toString().trim()
+
+                when {
+                    newName.isEmpty() -> {
+                        nameInput.error = "Sub-gallery name cannot be empty"
+                    }
+
+                    newName != subgallery.name && subgalleries.any { it.name == newName } -> {
+                        nameInput.error = "A sub-gallery with this name already exists"
+                    }
+
+                    else -> {
+                        // Update sub-gallery
+                        val updatedSubgallery = subgallery.copy(name = newName)
+                        subgalleries[position] = updatedSubgallery
+                        subgalleriesAdapter.submitList(subgalleries.toList())
+                        saveSubgalleriesToSharedPreferences()
+                        dialog.dismiss()
+                        Toast.makeText(ctx, "Sub-gallery updated", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+
+            dialog.show()
+        }
+    }
+
+    private fun showDeleteSubgalleryDialog(subgallery: GalleryItem, position: Int) {
+        context?.let { ctx ->
+            // Create a custom dialog
+            val dialog = Dialog(ctx)
+            dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
+            dialog.setContentView(R.layout.dialog_delete_subgallery)
+
+            // Make dialog background transparent to show rounded corners
+            dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+
+            // Get references to dialog views
+            val titleText = dialog.findViewById<TextView>(R.id.dialog_title)
+            val messageText = dialog.findViewById<TextView>(R.id.dialog_message)
+            val closeButton = dialog.findViewById<ImageButton>(R.id.btn_close)
+            val cancelButton = dialog.findViewById<Button>(R.id.btn_cancel)
+            val deleteButton = dialog.findViewById<Button>(R.id.btn_delete)
+
+            // Set gallery name in the message
+            messageText.text =
+                "Are you sure you want to delete '${subgallery.name}'? This action cannot be undone."
+
+            // Set click listeners
+            closeButton.setOnClickListener { dialog.dismiss() }
+            cancelButton.setOnClickListener { dialog.dismiss() }
+
+            deleteButton.setOnClickListener {
+                // Remove the sub-gallery
+                subgalleries.removeAt(position)
+                subgalleriesAdapter.submitList(subgalleries.toList())
+                saveSubgalleriesToSharedPreferences()
+                updateContentVisibility()
+                Toast.makeText(ctx, "Sub-gallery deleted", Toast.LENGTH_SHORT).show()
                 dialog.dismiss()
             }
 

@@ -12,7 +12,7 @@
         android:id="@+id/headerBackground"
         android:layout_width="match_parent"
         android:layout_height="64dp"
-        android:background="@drawable/splash_gradient_background"
+        android:background="@drawable/header_gradient_background"
         app:layout_constraintTop_toTopOf="parent" />
 
     <!-- Back Button -->
