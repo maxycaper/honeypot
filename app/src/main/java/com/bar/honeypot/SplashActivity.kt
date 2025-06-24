@@ -3,6 +3,8 @@ package com.bar.honeypot
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.view.View
 import android.widget.FrameLayout
 import android.widget.TextView
@@ -14,6 +16,9 @@ import java.util.Date
 import java.util.Locale
 
 class SplashActivity : AppCompatActivity() {
+
+    private val handler = Handler(Looper.getMainLooper())
+    private val delay = 2000L // 2 seconds
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -37,6 +42,11 @@ class SplashActivity : AppCompatActivity() {
         rootView.setOnClickListener {
             navigateToMainActivity()
         }
+
+        // Auto dismiss splash after 2 seconds
+        handler.postDelayed({
+            navigateToMainActivity()
+        }, delay)
     }
 
     private fun setVersionText() {
@@ -69,8 +79,17 @@ class SplashActivity : AppCompatActivity() {
     }
 
     private fun navigateToMainActivity() {
+        // Remove any pending auto-navigation callbacks
+        handler.removeCallbacksAndMessages(null)
+
         val intent = Intent(this, MainActivity::class.java)
         startActivity(intent)
         finish() // Close the splash activity so it's not in the back stack
+    }
+
+    override fun onPause() {
+        super.onPause()
+        // Remove any pending callbacks to prevent leaks
+        handler.removeCallbacksAndMessages(null)
     }
 }

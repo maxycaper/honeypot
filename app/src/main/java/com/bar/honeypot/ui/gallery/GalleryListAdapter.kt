@@ -48,7 +48,7 @@ class GalleryListAdapter(
         }
 
         fun bind(item: GalleryItem) {
-            binding.galleryName.text = "${item.name} (${item.itemCount})"
+            binding.galleryName.text = item.name
         }
     }
 

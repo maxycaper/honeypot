@@ -4,6 +4,8 @@ import android.app.Dialog
 import android.content.Context
 import android.graphics.*
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -53,6 +55,7 @@ class GalleryDetailFragment : Fragment() {
     private var galleryName: String = "Gallery"
     private lateinit var subgalleriesAdapter: GalleryListAdapter
     private lateinit var barcodeAdapter: BarcodeAdapter
+    private var isSubgallery: Boolean = false // Flag to indicate if this is a sub-gallery
 
     // View references
     private lateinit var galleryNameText: TextView
@@ -77,6 +80,7 @@ class GalleryDetailFragment : Fragment() {
         // Get gallery name from arguments
         arguments?.let {
             galleryName = it.getString("gallery_name", "Gallery")
+            isSubgallery = it.getBoolean("is_subgallery", false)
         }
 
         // Initialize views
@@ -118,8 +122,8 @@ class GalleryDetailFragment : Fragment() {
         recyclerViewSubgalleries.layoutManager = LinearLayoutManager(context)
         subgalleriesAdapter = GalleryListAdapter(
             onItemClick = { galleryItem ->
-                // Handle regular click
-                Toast.makeText(context, "Clicked: ${galleryItem.name}", Toast.LENGTH_SHORT).show()
+                // Navigate to sub-gallery when clicked
+                navigateToSubgallery(galleryItem.name)
             },
             onArrowClick = { galleryItem ->
                 // Navigate to nested gallery
@@ -374,6 +378,13 @@ class GalleryDetailFragment : Fragment() {
     }
 
     private fun loadSubgalleries() {
+        // If this is a sub-gallery, we shouldn't show or load nested sub-galleries
+        if (isSubgallery) {
+            subgalleriesLabel.visibility = View.GONE
+            recyclerViewSubgalleries.visibility = View.GONE
+            return
+        }
+
         // Get shared preferences
         val sharedPreferences = requireActivity().getSharedPreferences("HoneypotPrefs", Context.MODE_PRIVATE)
 
@@ -385,7 +396,9 @@ class GalleryDetailFragment : Fragment() {
                 val loadedSubgalleries: List<GalleryItem> = Gson().fromJson(subgalleriesJson, type)
                 subgalleries.clear()
                 subgalleries.addAll(loadedSubgalleries)
-                subgalleriesAdapter.submitList(subgalleries)
+                Handler(Looper.getMainLooper()).postDelayed({
+                    subgalleriesAdapter.submitList(subgalleries)
+                }, 50)
             } catch (e: Exception) {
                 e.printStackTrace()
             }
@@ -412,8 +425,8 @@ class GalleryDetailFragment : Fragment() {
     }
 
     private fun updateContentVisibility() {
-        // Show/hide subgalleries section
-        if (subgalleries.isEmpty()) {
+        // Show/hide subgalleries section (always hide for sub-galleries)
+        if (isSubgallery || subgalleries.isEmpty()) {
             subgalleriesLabel.visibility = View.GONE
             recyclerViewSubgalleries.visibility = View.GONE
         } else {
@@ -433,7 +446,7 @@ class GalleryDetailFragment : Fragment() {
         }
 
         // If both are empty, show empty view
-        if (subgalleries.isEmpty() && barcodes.isEmpty()) {
+        if ((isSubgallery || subgalleries.isEmpty()) && barcodes.isEmpty()) {
             emptyView.visibility = View.VISIBLE
         }
     }
@@ -443,6 +456,7 @@ class GalleryDetailFragment : Fragment() {
         val fragment = GalleryDetailFragment().apply {
             arguments = Bundle().apply {
                 putString("gallery_name", subgalleryName)
+                putBoolean("is_subgallery", true) // Indicate this is a sub-gallery
             }
         }
 
@@ -1052,6 +1066,11 @@ class GalleryDetailFragment : Fragment() {
             val addBarcodeOption = dialog.findViewById<View>(R.id.option_add_barcode)
             val cancelButton = dialog.findViewById<Button>(R.id.btn_cancel)
 
+            // Hide the sub-gallery option if this is already a sub-gallery
+            if (isSubgallery) {
+                addSubgalleryOption.visibility = View.GONE
+            }
+
             // Close button
             closeButton.setOnClickListener {
                 dialog.dismiss()
@@ -1120,7 +1139,9 @@ class GalleryDetailFragment : Fragment() {
                         // Update sub-gallery
                         val updatedSubgallery = subgallery.copy(name = newName)
                         subgalleries[position] = updatedSubgallery
-                        subgalleriesAdapter.submitList(subgalleries.toList())
+                        Handler(Looper.getMainLooper()).postDelayed({
+                            subgalleriesAdapter.submitList(subgalleries.toList())
+                        }, 50)
                         saveSubgalleriesToSharedPreferences()
                         dialog.dismiss()
                         Toast.makeText(ctx, "Sub-gallery updated", Toast.LENGTH_SHORT).show()
@@ -1160,7 +1181,16 @@ class GalleryDetailFragment : Fragment() {
             deleteButton.setOnClickListener {
                 // Remove the sub-gallery
                 subgalleries.removeAt(position)
-                subgalleriesAdapter.submitList(subgalleries.toList())
+
+                // Create a new list to force adapter update
+                val newList = subgalleries.toList()
+
+                // Update the adapter with the new list
+                subgalleriesAdapter.submitList(null) // Clear the list first
+                Handler(Looper.getMainLooper()).postDelayed({
+                    subgalleriesAdapter.submitList(newList) // Then submit the new list after delay
+                }, 50)
+
                 saveSubgalleriesToSharedPreferences()
                 updateContentVisibility()
                 Toast.makeText(ctx, "Sub-gallery deleted", Toast.LENGTH_SHORT).show()
@@ -1229,8 +1259,14 @@ class GalleryDetailFragment : Fragment() {
         // Add to the list
         subgalleries.add(newSubgallery)
 
-        // Update the adapter
-        subgalleriesAdapter.submitList(subgalleries.toList())
+        // Create a new list to force adapter update
+        val newList = subgalleries.toList()
+
+        // Update the adapter with the new list
+        subgalleriesAdapter.submitList(null) // Clear the list first
+        Handler(Looper.getMainLooper()).postDelayed({
+            subgalleriesAdapter.submitList(newList) // Then submit the new list after delay
+        }, 50)
 
         // Save to SharedPreferences
         saveSubgalleriesToSharedPreferences()
@@ -1249,7 +1285,7 @@ class GalleryDetailFragment : Fragment() {
 
         // Save to SharedPreferences with the current gallery as the parent
         editor.putString("subgalleries_$galleryName", subgalleriesJson)
-        editor.apply()
+        editor.commit() // Use commit instead of apply for immediate saving
     }
 
     private fun showEnlargedBarcodeDialog(barcode: BarcodeData) {
