@@ -1,22 +1,25 @@
 <?xml version="1.0" encoding="utf-8"?>
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- Black outer circle -->
+    <!-- Transparent outer layer for spacing -->
     <item>
         <shape android:shape="oval">
-            <solid android:color="#000000" />
-            <size android:width="120dp" android:height="120dp" />
+            <solid android:color="@android:color/transparent" />
+            <size android:width="140dp" android:height="140dp" />
         </shape>
     </item>
-    <!-- Neon glow -->
-    <item android:left="8dp" android:top="8dp" android:right="8dp" android:bottom="8dp">
+    <!-- Neon purple glow -->
+    <item android:left="4dp" android:top="4dp" android:right="4dp" android:bottom="4dp">
         <shape android:shape="oval">
             <solid android:color="#bb0ffe" />
+            <size android:width="132dp" android:height="132dp" />
+            <gradient android:type="radial" android:gradientRadius="66dp"
+                android:startColor="#bb0ffe" android:endColor="#00ffffff" />
         </shape>
     </item>
-    <!-- Inner black circle -->
-    <item android:left="12dp" android:top="12dp" android:right="12dp" android:bottom="12dp">
+    <!-- Solid neon purple inner circle -->
+    <item android:left="16dp" android:top="16dp" android:right="16dp" android:bottom="16dp">
         <shape android:shape="oval">
-            <solid android:color="#000000" />
+            <solid android:color="#bb0ffe" />
         </shape>
     </item>
 </layer-list> 
