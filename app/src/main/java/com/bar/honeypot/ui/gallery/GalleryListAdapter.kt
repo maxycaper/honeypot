@@ -25,6 +25,15 @@ class GalleryListAdapter(
         holder.bind(getItem(position))
     }
 
+    /**
+     * Force a refresh of the adapter with a new list of items
+     * This helps ensure UI updates immediately when gallery names change
+     */
+    fun refreshList(items: List<GalleryItem>) {
+        submitList(null)
+        submitList(items)
+    }
+
     inner class ViewHolder(
         private val binding: ItemGalleryBinding
     ) : RecyclerView.ViewHolder(binding.root) {

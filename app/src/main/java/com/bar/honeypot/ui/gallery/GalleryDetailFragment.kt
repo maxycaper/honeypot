@@ -1032,13 +1032,149 @@ class GalleryDetailFragment : Fragment() {
             val barcodeFormat =
                 data?.getStringExtra(com.bar.honeypot.ui.scanner.BarcodeScannerActivity.BARCODE_FORMAT)
 
+            // Extract all product information from scanner result
+            val productName =
+                data?.getStringExtra(com.bar.honeypot.ui.scanner.BarcodeScannerActivity.BARCODE_PRODUCT_NAME)
+                    ?: ""
+            val productTitle =
+                data?.getStringExtra(com.bar.honeypot.ui.scanner.BarcodeScannerActivity.BARCODE_TITLE)
+                    ?: ""
+            val productBrand =
+                data?.getStringExtra(com.bar.honeypot.ui.scanner.BarcodeScannerActivity.BARCODE_PRODUCT_BRAND)
+                    ?: ""
+            val productImageUrl =
+                data?.getStringExtra(com.bar.honeypot.ui.scanner.BarcodeScannerActivity.BARCODE_PRODUCT_IMAGE_URL)
+                    ?: ""
+
+            // Extract all other structured data
+            val description =
+                data?.getStringExtra(com.bar.honeypot.ui.scanner.BarcodeScannerActivity.BARCODE_DESCRIPTION)
+                    ?: ""
+            val url =
+                data?.getStringExtra(com.bar.honeypot.ui.scanner.BarcodeScannerActivity.BARCODE_URL)
+                    ?: ""
+            val email =
+                data?.getStringExtra(com.bar.honeypot.ui.scanner.BarcodeScannerActivity.BARCODE_EMAIL)
+                    ?: ""
+            val phone =
+                data?.getStringExtra(com.bar.honeypot.ui.scanner.BarcodeScannerActivity.BARCODE_PHONE)
+                    ?: ""
+            val smsContent =
+                data?.getStringExtra(com.bar.honeypot.ui.scanner.BarcodeScannerActivity.BARCODE_SMS)
+                    ?: ""
+            val wifiSsid =
+                data?.getStringExtra(com.bar.honeypot.ui.scanner.BarcodeScannerActivity.BARCODE_WIFI_SSID)
+                    ?: ""
+            val wifiPassword =
+                data?.getStringExtra(com.bar.honeypot.ui.scanner.BarcodeScannerActivity.BARCODE_WIFI_PASSWORD)
+                    ?: ""
+            val wifiType =
+                data?.getStringExtra(com.bar.honeypot.ui.scanner.BarcodeScannerActivity.BARCODE_WIFI_TYPE)
+                    ?: ""
+            val geoLat = data?.getDoubleExtra(
+                com.bar.honeypot.ui.scanner.BarcodeScannerActivity.BARCODE_GEO_LAT,
+                0.0
+            ) ?: 0.0
+            val geoLng = data?.getDoubleExtra(
+                com.bar.honeypot.ui.scanner.BarcodeScannerActivity.BARCODE_GEO_LNG,
+                0.0
+            ) ?: 0.0
+            val contactInfo =
+                data?.getStringExtra(com.bar.honeypot.ui.scanner.BarcodeScannerActivity.BARCODE_CONTACT_INFO)
+                    ?: ""
+
             if (barcodeValue != null && barcodeFormat != null) {
-                // Add the scanned barcode
-                addBarcode(barcodeValue, barcodeFormat)
+                // Determine the best title to use
+                val titleToUse = when {
+                    productName.isNotEmpty() -> productName
+                    productTitle.isNotEmpty() -> productTitle
+                    else -> ""
+                }
+
+                // Add the scanned barcode with all information
+                addBarcodeWithFullInfo(
+                    value = barcodeValue,
+                    format = barcodeFormat,
+                    title = titleToUse,
+                    description = if (productBrand.isNotEmpty()) "Brand: $productBrand" else description,
+                    url = url,
+                    email = email,
+                    phone = phone,
+                    smsContent = smsContent,
+                    wifiSsid = wifiSsid,
+                    wifiPassword = wifiPassword,
+                    wifiType = wifiType,
+                    geoLat = geoLat,
+                    geoLng = geoLng,
+                    productName = productName,
+                    contactInfo = contactInfo,
+                    productImageUrl = productImageUrl
+                )
             } else {
                 Toast.makeText(context, "Error: Invalid barcode data", Toast.LENGTH_SHORT).show()
             }
         }
+    }
+
+    private fun addBarcodeWithFullInfo(
+        value: String,
+        format: String,
+        title: String = "",
+        description: String = "",
+        url: String = "",
+        email: String = "",
+        phone: String = "",
+        smsContent: String = "",
+        wifiSsid: String = "",
+        wifiPassword: String = "",
+        wifiType: String = "",
+        geoLat: Double = 0.0,
+        geoLng: Double = 0.0,
+        productName: String = "",
+        contactInfo: String = "",
+        productImageUrl: String = ""
+    ) {
+        // Create new barcode with all information
+        val newBarcode = BarcodeData(
+            value = value,
+            format = format,
+            galleryName = galleryName,
+            title = title,
+            description = description,
+            url = url,
+            email = email,
+            phone = phone,
+            smsContent = smsContent,
+            wifiSsid = wifiSsid,
+            wifiPassword = wifiPassword,
+            wifiType = wifiType,
+            geoLat = geoLat,
+            geoLng = geoLng,
+            productName = productName,
+            contactInfo = contactInfo,
+            productImageUrl = productImageUrl
+        )
+
+        // Add to the list
+        barcodes.add(newBarcode)
+
+        // Update the adapter
+        barcodeAdapter.updateBarcodes(barcodes)
+
+        // Save to SharedPreferences
+        saveBarcodesToSharedPreferences()
+
+        // Update visibility of barcodes section
+        updateContentVisibility()
+
+        // Show confirmation with proper product name if available
+        val confirmationMessage = if (title.isNotEmpty()) {
+            "Barcode added to $galleryName: $title"
+        } else {
+            "Barcode added to $galleryName"
+        }
+
+        Toast.makeText(context, confirmationMessage, Toast.LENGTH_SHORT).show()
     }
 
     private fun launchBarcodeScanner() {
@@ -1139,9 +1275,16 @@ class GalleryDetailFragment : Fragment() {
                         // Update sub-gallery
                         val updatedSubgallery = subgallery.copy(name = newName)
                         subgalleries[position] = updatedSubgallery
+
+                        // Create a new list to force adapter update
+                        val newList = subgalleries.toList()
+
+                        // Update the adapter with the new list - clear first then submit
+                        subgalleriesAdapter.submitList(null) // Clear the list first
                         Handler(Looper.getMainLooper()).postDelayed({
-                            subgalleriesAdapter.submitList(subgalleries.toList())
+                            subgalleriesAdapter.submitList(newList) // Then submit the new list after delay
                         }, 50)
+
                         saveSubgalleriesToSharedPreferences()
                         dialog.dismiss()
                         Toast.makeText(ctx, "Sub-gallery updated", Toast.LENGTH_SHORT).show()
@@ -1292,6 +1435,22 @@ class GalleryDetailFragment : Fragment() {
         context?.let { ctx ->
             val dialog = Dialog(ctx, android.R.style.Theme_Black_NoTitleBar_Fullscreen)
             dialog.setContentView(R.layout.dialog_enlarged_barcode)
+
+            // Make sure the dialog takes up the full screen with no status bar
+            dialog.window?.let { window ->
+                window.setFlags(
+                    android.view.WindowManager.LayoutParams.FLAG_FULLSCREEN,
+                    android.view.WindowManager.LayoutParams.FLAG_FULLSCREEN
+                )
+                window.decorView.systemUiVisibility = (
+                        android.view.View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY or
+                                android.view.View.SYSTEM_UI_FLAG_LAYOUT_STABLE or
+                                android.view.View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION or
+                                android.view.View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN or
+                                android.view.View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or
+                                android.view.View.SYSTEM_UI_FLAG_FULLSCREEN
+                        )
+            }
 
             val enlargedImageView = dialog.findViewById<ImageView>(R.id.enlarged_barcode_image)
             val barcodeValueText = dialog.findViewById<TextView>(R.id.enlarged_barcode_value)
