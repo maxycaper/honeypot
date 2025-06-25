@@ -593,6 +593,49 @@ class GalleryDetailFragment : Fragment() {
                     productImageView.visibility = View.VISIBLE
                     addPhotoButton.visibility = View.GONE
                     removePhotoButton.visibility = View.VISIBLE
+
+                    // Load remote image with improved URL detection
+                    if (barcode.productImageUrl.startsWith("http")) {
+                        // Load the image in a background thread
+                        Thread {
+                            try {
+                                val url = java.net.URL(barcode.productImageUrl)
+                                val connection = url.openConnection() as java.net.HttpURLConnection
+                                connection.doInput = true
+                                connection.connectTimeout = 10000 // 10 second timeout
+                                connection.readTimeout = 10000
+                                connection.connect()
+                                val input = connection.inputStream
+                                val bitmap = BitmapFactory.decodeStream(input)
+                                input.close()
+                                connection.disconnect()
+
+                                // Update UI on main thread
+                                activity?.runOnUiThread {
+                                    if (bitmap != null) {
+                                        productImageView.setImageBitmap(bitmap)
+                                    } else {
+                                        // Failed to decode image, show camera button instead
+                                        productImageView.visibility = View.GONE
+                                        addPhotoButton.visibility = View.VISIBLE
+                                        removePhotoButton.visibility = View.GONE
+                                    }
+                                }
+                            } catch (e: Exception) {
+                                // Error loading image, show camera button instead
+                                activity?.runOnUiThread {
+                                    productImageView.visibility = View.GONE
+                                    addPhotoButton.visibility = View.VISIBLE
+                                    removePhotoButton.visibility = View.GONE
+                                }
+                            }
+                        }.start()
+                    } else {
+                        // Invalid URL, show camera button instead
+                        productImageView.visibility = View.GONE
+                        addPhotoButton.visibility = View.VISIBLE
+                        removePhotoButton.visibility = View.GONE
+                    }
                 }
             } else {
                 // No product image available, show initial camera button
