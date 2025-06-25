@@ -39,11 +39,12 @@ import android.graphics.drawable.Drawable
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.RecyclerView
+import java.util.ArrayList
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
-    private val customGalleries = mutableListOf<String>()
+    private val customGalleries = ArrayList<String>()
     private lateinit var sharedPreferences: SharedPreferences
     private val PREFS_NAME = "HoneypotPrefs"
     private val GALLERIES_KEY = "savedGalleries"
