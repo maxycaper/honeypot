@@ -77,15 +77,31 @@ class GalleryDetailFragment : Fragment() {
         // Inflate the layout for this fragment
         val view = inflater.inflate(R.layout.fragment_gallery_detail, container, false)
 
-        // Handle status bar overlap
+        // Handle status bar and navigation bar insets
         view.setOnApplyWindowInsetsListener { v, insets ->
             val statusBarHeight = insets.systemWindowInsetTop
+            val navigationBarHeight = insets.systemWindowInsetBottom
             
             // Add top margin to header background and back button to account for status bar
             val headerBackground = view.findViewById<View>(R.id.headerBackground)
             val headerParams = headerBackground.layoutParams as androidx.constraintlayout.widget.ConstraintLayout.LayoutParams
             headerParams.topMargin = statusBarHeight
             headerBackground.layoutParams = headerParams
+
+            // Add bottom padding to RecyclerView to avoid overlap with navigation bar
+            val recyclerViewBarcodes = view.findViewById<RecyclerView>(R.id.recyclerViewBarcodes)
+            recyclerViewBarcodes.setPadding(
+                recyclerViewBarcodes.paddingLeft,
+                recyclerViewBarcodes.paddingTop,
+                recyclerViewBarcodes.paddingRight,
+                80 + navigationBarHeight // FAB space + navigation bar height
+            )
+
+            // Add bottom margin to FAB to avoid overlap with navigation bar
+            val fabAdd = view.findViewById<FloatingActionButton>(R.id.fabAdd)
+            val fabParams = fabAdd.layoutParams as androidx.constraintlayout.widget.ConstraintLayout.LayoutParams
+            fabParams.bottomMargin = 16 + navigationBarHeight // Original margin + navigation bar height
+            fabAdd.layoutParams = fabParams
             
             insets
         }

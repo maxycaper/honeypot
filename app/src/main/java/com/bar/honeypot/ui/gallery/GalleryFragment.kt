@@ -258,6 +258,26 @@ class GalleryFragment : Fragment() {
 
         _binding = FragmentGalleryBinding.inflate(inflater, container, false)
         val root: View = binding.root
+
+        // Handle navigation bar insets to avoid FAB overlap
+        root.setOnApplyWindowInsetsListener { v, insets ->
+            val navigationBarHeight = insets.systemWindowInsetBottom
+            
+            // Add bottom padding to RecyclerView to avoid overlap with navigation bar
+            binding.recyclerViewBarcodes.setPadding(
+                binding.recyclerViewBarcodes.paddingLeft,
+                binding.recyclerViewBarcodes.paddingTop,
+                binding.recyclerViewBarcodes.paddingRight,
+                80 + navigationBarHeight // FAB space + navigation bar height
+            )
+
+            // Add bottom margin to FAB to avoid overlap with navigation bar
+            val fabParams = binding.fabAddBarcode.layoutParams as androidx.constraintlayout.widget.ConstraintLayout.LayoutParams
+            fabParams.bottomMargin = 16 + navigationBarHeight // Original margin + navigation bar height
+            binding.fabAddBarcode.layoutParams = fabParams
+            
+            insets
+        }
         
         // Get gallery name from arguments
         arguments?.let {
