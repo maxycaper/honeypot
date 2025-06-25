@@ -40,6 +40,7 @@ import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.RecyclerView
 import java.util.ArrayList
+import androidx.core.view.WindowCompat
 
 class MainActivity : AppCompatActivity() {
 
@@ -53,14 +54,36 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        // Enable edge-to-edge layout
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
         setSupportActionBar(binding.toolbar)
-        
+
+        // Add top margin to toolbar and toolbar background to account for status bar
+        binding.root.setOnApplyWindowInsetsListener { view, insets ->
+            val statusBarHeight = insets.systemWindowInsetTop
+
+            // Add top margin to toolbar background
+            val toolbarBgParams =
+                binding.toolbarBackground.layoutParams as androidx.constraintlayout.widget.ConstraintLayout.LayoutParams
+            toolbarBgParams.topMargin = statusBarHeight
+            binding.toolbarBackground.layoutParams = toolbarBgParams
+
+            // Add top margin to toolbar
+            val toolbarParams =
+                binding.toolbar.layoutParams as androidx.constraintlayout.widget.ConstraintLayout.LayoutParams
+            toolbarParams.topMargin = statusBarHeight
+            binding.toolbar.layoutParams = toolbarParams
+
+            insets
+        }
+
         // Initialize SharedPreferences
         sharedPreferences = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        
+
         // Load saved galleries
         loadSavedGalleries()
 
@@ -81,7 +104,7 @@ class MainActivity : AppCompatActivity() {
             showAddGalleryDialog()
         }
     }
-    
+
     private fun loadSavedGalleries() {
         val savedGalleriesJson = sharedPreferences.getString(GALLERIES_KEY, null)
         if (!savedGalleriesJson.isNullOrEmpty()) {
@@ -95,7 +118,7 @@ class MainActivity : AppCompatActivity() {
             }
         }
     }
-    
+
     private fun saveGalleries() {
         val editor = sharedPreferences.edit()
         val galleriesJson = Gson().toJson(customGalleries)
@@ -114,7 +137,7 @@ class MainActivity : AppCompatActivity() {
                 navigateToGalleryDetail(galleryItem.name)
             }
         )
-        
+
         binding.recyclerViewGalleries.apply {
             layoutManager = LinearLayoutManager(this@MainActivity)
             adapter = galleryAdapter
@@ -252,29 +275,29 @@ class MainActivity : AppCompatActivity() {
             showAddGalleryDialog()
         }
     }
-    
+
     private fun showAddGalleryDialog() {
         // Create a custom dialog
         val dialog = Dialog(this)
         dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
         dialog.setContentView(R.layout.dialog_create_gallery)
-        
+
         // Make dialog background transparent to show rounded corners
         dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
-        
+
         // Get references to dialog views
         val nameInput = dialog.findViewById<EditText>(R.id.edit_gallery_name)
         val cancelButton = dialog.findViewById<Button>(R.id.btn_create_gallery_cancel)
         val createButton = dialog.findViewById<Button>(R.id.btn_create_gallery_confirm)
-        
+
         // Set click listeners
         cancelButton.setOnClickListener {
             dialog.dismiss()
         }
-        
+
         createButton.setOnClickListener {
             val galleryName = nameInput.text.toString().trim()
-            
+
             when {
                 galleryName.isEmpty() -> {
                     nameInput.error = "Gallery name cannot be empty"
@@ -286,57 +309,57 @@ class MainActivity : AppCompatActivity() {
                     // Add new gallery
                     customGalleries.add(galleryName)
                     saveGalleries()
-                    
+
                     // Update RecyclerView
                     val currentList = galleryAdapter.currentList.toMutableList()
                     currentList.add(GalleryItem(galleryName))
                     galleryAdapter.submitList(currentList)
-                    
+
                     dialog.dismiss()
                 }
             }
         }
-        
+
         dialog.show()
     }
-    
+
     private fun showDeleteGalleryDialog(galleryItem: GalleryItem) {
         // Create a custom dialog
         val dialog = Dialog(this)
         dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
         dialog.setContentView(R.layout.dialog_delete_gallery)
-        
+
         // Make dialog background transparent to show rounded corners
         dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
-        
+
         // Get references to dialog views
         val titleTextView = dialog.findViewById<TextView>(R.id.dialog_title)
         val messageTextView = dialog.findViewById<TextView>(R.id.dialog_message)
         val cancelButton = dialog.findViewById<Button>(R.id.btn_delete_gallery_cancel)
         val deleteButton = dialog.findViewById<Button>(R.id.btn_delete_gallery_confirm)
-        
+
         // Set dialog text
         titleTextView.text = "Delete Gallery"
         messageTextView.text = "Are you sure you want to delete the gallery '${galleryItem.name}'? This action cannot be undone."
-        
+
         // Set click listeners
         cancelButton.setOnClickListener {
             dialog.dismiss()
         }
-        
+
         deleteButton.setOnClickListener {
             // Remove gallery
             customGalleries.remove(galleryItem.name)
             saveGalleries()
-            
+
             // Update RecyclerView
             val currentList = galleryAdapter.currentList.toMutableList()
             currentList.remove(galleryItem)
             galleryAdapter.submitList(currentList)
-            
+
             dialog.dismiss()
         }
-        
+
         dialog.show()
     }
 
