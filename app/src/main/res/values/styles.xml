@@ -22,7 +22,7 @@
         <item name="android:textAlignment">center</item>
         <item name="android:gravity">center</item>
         <item name="android:layout_gravity">center</item>
-        <item name="android:fontFamily">@font/lora</item>
+        <item name="android:fontFamily">sans-serif</item>
         <item name="android:layout_marginBottom">16dp</item>
     </style>
     
@@ -46,4 +46,38 @@
         <item name="android:paddingTop">8dp</item>
         <item name="android:paddingBottom">8dp</item>
     </style>
-</resources> 
+
+    <!-- Circular Image View style -->
+    <style name="CircularImageView" parent="">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">50%</item>
+    </style>
+
+    <!-- Style for the FAB with gradient background -->
+    <style name="ShapeAppearanceOverlay.FloatingActionButton" parent="">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">50%</item>
+        <item name="android:background">@drawable/fab_gradient_background</item>
+    </style>
+
+    <!-- Common style for gradient FABs across all screens -->
+    <style name="GradientFAB" parent="Widget.MaterialComponents.FloatingActionButton">
+        <item name="android:backgroundTint">@android:color/transparent</item>
+        <item name="backgroundTint">@android:color/transparent</item>
+        <item name="tint">@android:color/white</item>
+        <item name="rippleColor">#80FFFFFF</item>
+        <item name="borderWidth">0dp</item>
+        <item name="elevation">8dp</item>
+        <item name="maxImageSize">24dp</item>
+        <item name="android:background">@drawable/fab_gradient_background</item>
+        <item name="shapeAppearanceOverlay">@style/ShapeAppearanceOverlay.FloatingActionButton
+        </item>
+    </style>
+
+    <!-- Mini version of the gradient FAB style -->
+    <style name="GradientFAB.Mini" parent="GradientFAB">
+        <item name="fabSize">mini</item>
+        <item name="maxImageSize">18dp</item>
+        <item name="elevation">6dp</item>
+    </style>
+</resources>

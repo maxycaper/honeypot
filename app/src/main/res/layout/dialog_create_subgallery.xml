@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="24dp"
+    android:background="@drawable/rounded_dialog_background">
+
+    <!-- Title with Close Button -->
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="24dp">
+
+        <TextView
+            android:id="@+id/dialog_title"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_centerHorizontal="true"
+            android:text="Create Sub-Gallery"
+            android:textSize="24sp"
+            android:textStyle="bold"
+            android:textColor="@color/fab_vibrant_purple" />
+
+        <ImageButton
+            android:id="@+id/btn_close"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:layout_alignParentEnd="true"
+            android:layout_centerVertical="true"
+            android:background="@android:color/transparent"
+            android:src="@android:drawable/ic_menu_close_clear_cancel"
+            app:tint="@color/white"
+            android:contentDescription="Close dialog" />
+    </RelativeLayout>
+
+    <!-- Sub-gallery name input -->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Enter a name for your sub-gallery:"
+        android:textSize="16sp"
+        android:textColor="@color/white"
+        android:layout_marginBottom="16dp" />
+
+    <EditText
+        android:id="@+id/edit_subgallery_name"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:padding="16dp"
+        android:background="@drawable/rounded_item_background"
+        android:hint="Sub-gallery name"
+        android:textColorHint="@color/text_secondary"
+        android:textColor="@color/white"
+        android:inputType="text"
+        android:layout_marginBottom="32dp" />
+
+    <!-- Buttons -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center">
+
+        <Button
+            android:id="@+id/btn_cancel"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginEnd="8dp"
+            android:padding="12dp"
+            android:text="CANCEL"
+            android:textColor="@color/white"
+            android:background="@drawable/rounded_button_background"
+            android:backgroundTint="@color/card_background" />
+
+        <Button
+            android:id="@+id/btn_create"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="8dp"
+            android:padding="12dp"
+            android:text="CREATE"
+            android:textColor="@color/white"
+            android:background="@drawable/rounded_button_background"
+            android:backgroundTint="@color/fab_vibrant_purple" />
+    </LinearLayout>
+</LinearLayout>

@@ -21,6 +21,8 @@ rad.json
 *.flf
 #Test results file
 TestResults.xml
+# IDE files
+.idea/ChatHistory_schema_v2.xml
 =======
 *.iml
 .gradle

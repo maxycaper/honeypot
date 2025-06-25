@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp"
+    android:height="48dp"
+    android:viewportWidth="100"
+    android:viewportHeight="100">
+
+    <!-- Black circle background -->
+    <path
+        android:fillColor="#000000"
+        android:pathData="M50,50m-40,0a40,40 0,1 1,80 0a40,40 0,1 1,-80 0"/>
+
+    <!-- Outer cyan glow -->
+    <path
+        android:strokeColor="#00E5FF"
+        android:strokeWidth="2"
+        android:strokeAlpha="0.6"
+        android:pathData="M50,50m-38,0a38,38 0,1 1,76 0a38,38 0,1 1,-76 0"/>
+
+    <!-- Trash can body - neon pink outline -->
+    <path
+        android:strokeColor="#FF47E1"
+        android:strokeWidth="2"
+        android:pathData="M35,40 L65,40 L62,75 L38,75 Z"
+        android:fillColor="#00000000"/>
+
+    <!-- Trash can lid - neon pink -->
+    <path
+        android:strokeColor="#FF47E1"
+        android:strokeWidth="2"
+        android:pathData="M32,35 L68,35"
+        android:strokeLineCap="round"/>
+
+    <!-- Lid handle -->
+    <path
+        android:strokeColor="#FF47E1"
+        android:strokeWidth="2"
+        android:pathData="M45,35 L55,35 L55,30 L45,30 Z"
+        android:fillColor="#00000000"/>
+</vector> 

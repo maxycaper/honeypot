@@ -1,7 +1,6 @@
 package com.bar.honeypot
 
 import android.content.Context
-import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.view.Menu
@@ -11,13 +10,10 @@ import android.widget.ImageButton
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
-import com.google.android.material.navigation.NavigationView
 import androidx.navigation.findNavController
 import androidx.navigation.ui.AppBarConfiguration
 import androidx.navigation.ui.navigateUp
 import androidx.navigation.ui.setupActionBarWithNavController
-import androidx.navigation.ui.setupWithNavController
-import androidx.drawerlayout.widget.DrawerLayout
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AlertDialog
 import androidx.core.os.bundleOf
@@ -28,22 +24,31 @@ import com.bar.honeypot.util.VersionHelper
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
-import androidx.core.view.GravityCompat
-import android.widget.Button
-import android.content.DialogInterface
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
 import android.view.Window
 import android.app.Dialog
+import android.content.SharedPreferences
+import android.widget.Button
+import androidx.recyclerview.widget.LinearLayoutManager
+import com.bar.honeypot.ui.gallery.GalleryListAdapter
+import com.bar.honeypot.ui.gallery.GalleryDetailFragment
+import com.bar.honeypot.ui.gallery.GalleryItem
+import android.graphics.Canvas
+import android.graphics.drawable.Drawable
+import androidx.core.content.ContextCompat
+import androidx.recyclerview.widget.ItemTouchHelper
+import androidx.recyclerview.widget.RecyclerView
+import java.util.ArrayList
 
 class MainActivity : AppCompatActivity() {
 
-    private lateinit var appBarConfiguration: AppBarConfiguration
     private lateinit var binding: ActivityMainBinding
-    private val customGalleries = mutableListOf<String>()
+    private val customGalleries = ArrayList<String>()
     private lateinit var sharedPreferences: SharedPreferences
     private val PREFS_NAME = "HoneypotPrefs"
     private val GALLERIES_KEY = "savedGalleries"
+    private lateinit var galleryAdapter: GalleryListAdapter
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -51,49 +56,29 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        setSupportActionBar(binding.appBarMain.toolbar)
+        setSupportActionBar(binding.toolbar)
         
-        // Force navigation icon to be white
-        val navigationIcon = androidx.appcompat.content.res.AppCompatResources.getDrawable(this, R.drawable.ic_neon_menu)
-        navigationIcon?.setTint(getColor(R.color.white))
-        binding.appBarMain.toolbar.navigationIcon = navigationIcon
-
         // Initialize SharedPreferences
         sharedPreferences = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         
         // Load saved galleries
         loadSavedGalleries()
 
-        val drawerLayout: DrawerLayout = binding.drawerLayout
-        val navView: NavigationView = binding.navView
-        val navController = findNavController(R.id.nav_host_fragment_content_main)
-        
-        // Set app version in the navigation header
-        setAppVersion()
-        
-        // Set up gallery management controls
-        setupGalleryManagement(navView, navController)
-        
-        // Configure toolbar to open drawer when menu icon is clicked
-        binding.appBarMain.toolbar.setNavigationOnClickListener {
-            drawerLayout.openDrawer(GravityCompat.START)
+        setupRecyclerView()
+        setupFab()
+
+        // Setup back stack listener
+        supportFragmentManager.addOnBackStackChangedListener {
+            if (supportFragmentManager.backStackEntryCount == 0) {
+                // We've returned to the main screen, restore visibility
+                binding.recyclerViewGalleries.visibility = View.VISIBLE
+                binding.fabAddGallery.visibility = View.VISIBLE
+            }
         }
-        
-        // Configure app bar with empty top-level destinations
-        appBarConfiguration = AppBarConfiguration(emptySet(), drawerLayout)
-        setupActionBarWithNavController(navController, appBarConfiguration)
-        
-        // Restore saved galleries to the menu
-        restoreGalleriesToMenu(navView, navController)
-        
+
         // If there are no galleries, show the create gallery dialog
         if (customGalleries.isEmpty()) {
-            showAddGalleryDialog(navView, navController)
-        } else {
-            // Navigate to the first gallery
-            val firstGallery = customGalleries.first()
-            val bundle = bundleOf("gallery_name" to firstGallery)
-            navController.navigate(R.id.nav_gallery, bundle)
+            showAddGalleryDialog()
         }
     }
     
@@ -117,47 +102,205 @@ class MainActivity : AppCompatActivity() {
         editor.putString(GALLERIES_KEY, galleriesJson)
         editor.apply()
     }
-    
-    private fun restoreGalleriesToMenu(navView: NavigationView, navController: NavController) {
-        val menu = navView.menu
+
+    private fun setupRecyclerView() {
+        galleryAdapter = GalleryListAdapter(
+            onItemClick = { galleryItem ->
+                // Handle gallery item click - navigate to detail view
+                navigateToGalleryDetail(galleryItem.name)
+            },
+            onArrowClick = { galleryItem ->
+                // Navigate to gallery detail view
+                navigateToGalleryDetail(galleryItem.name)
+            }
+        )
         
-        // Add each saved gallery to the menu
-        customGalleries.forEach { galleryName ->
-            val newItemId = View.generateViewId()
-            val newItem = menu.add(R.id.gallery_group, newItemId, Menu.NONE, galleryName)
-            newItem.setIcon(R.drawable.ic_menu_gallery)
-            newItem.isCheckable = true
-            
-            // Add delete icon to each gallery
-            newItem.setActionView(R.layout.menu_item_delete)
-            val deleteView = newItem.actionView
-            deleteView?.findViewById<View>(R.id.btn_delete_gallery)?.setOnClickListener {
-                showDeleteGalleryDialog(galleryName, navView, navController)
+        binding.recyclerViewGalleries.apply {
+            layoutManager = LinearLayoutManager(this@MainActivity)
+            adapter = galleryAdapter
+        }
+
+        // Add swipe to delete functionality
+        val itemTouchHelper =
+            ItemTouchHelper(object :
+                ItemTouchHelper.SimpleCallback(0, ItemTouchHelper.LEFT or ItemTouchHelper.RIGHT) {
+                override fun onMove(
+                    recyclerView: RecyclerView,
+                    viewHolder: RecyclerView.ViewHolder,
+                    target: RecyclerView.ViewHolder
+                ): Boolean {
+                    return false
+                }
+
+                override fun onSwiped(viewHolder: RecyclerView.ViewHolder, direction: Int) {
+                    val position = viewHolder.adapterPosition
+                    val galleryItem = galleryAdapter.currentList[position]
+                    // Restore the item to its original state (cancel the swipe)
+                    galleryAdapter.notifyItemChanged(position)
+                    if (direction == ItemTouchHelper.LEFT) {
+                        // Show the delete dialog
+                        showDeleteGalleryDialog(galleryItem)
+                    } else if (direction == ItemTouchHelper.RIGHT) {
+                        // Show the edit dialog
+                        showEditGalleryDialog(galleryItem)
+                    }
+                }
+
+                override fun onChildDraw(
+                    c: Canvas,
+                    recyclerView: RecyclerView,
+                    viewHolder: RecyclerView.ViewHolder,
+                    dX: Float,
+                    dY: Float,
+                    actionState: Int,
+                    isCurrentlyActive: Boolean
+                ) {
+                    val itemView = viewHolder.itemView
+                    val background = ColorDrawable()
+                    val icon: Drawable?
+
+                    // Different visuals based on swipe direction
+                    if (dX > 0) { // Swiping right (edit)
+                        background.color =
+                            ContextCompat.getColor(this@MainActivity, R.color.neon_hot_pink)
+                        icon = ContextCompat.getDrawable(this@MainActivity, R.drawable.ic_edit)
+
+                        // Set background
+                        background.setBounds(
+                            itemView.left,
+                            itemView.top,
+                            itemView.left + dX.toInt(),
+                            itemView.bottom
+                        )
+
+                        // Draw icon if swiped enough
+                        if (dX > 20) {
+                            icon?.setBounds(
+                                itemView.left + 50,
+                                itemView.top + (itemView.bottom - itemView.top - icon.intrinsicHeight) / 2,
+                                itemView.left + 80 + icon.intrinsicWidth,
+                                itemView.top + (itemView.bottom - itemView.top) / 2 + icon.intrinsicHeight
+                            )
+                        }
+                    } else { // Swiping left (delete)
+                        background.color = Color.RED
+                        icon = ContextCompat.getDrawable(this@MainActivity, R.drawable.ic_delete)
+
+                        // Set background
+                        background.setBounds(
+                            itemView.right + dX.toInt(),
+                            itemView.top,
+                            itemView.right,
+                            itemView.bottom
+                        )
+
+                        // Draw icon if swiped enough
+                        if (dX < -20) {
+                            icon?.setBounds(
+                                itemView.right - 80,
+                                itemView.top + (itemView.bottom - itemView.top - icon.intrinsicHeight) / 2,
+                                itemView.right - 50,
+                                itemView.top + (itemView.bottom - itemView.top) / 2 + icon.intrinsicHeight
+                            )
+                        }
+                    }
+
+                    background.draw(c)
+                    icon?.draw(c)
+
+                    super.onChildDraw(
+                        c,
+                        recyclerView,
+                        viewHolder,
+                        dX,
+                        dY,
+                        actionState,
+                        isCurrentlyActive
+                    )
+                }
+            })
+        itemTouchHelper.attachToRecyclerView(binding.recyclerViewGalleries)
+
+        // Load saved galleries into the RecyclerView
+        val currentGalleries = customGalleries.map { name ->
+            GalleryItem(name, "0 items")  // Initially set to 0 items
+        }
+        galleryAdapter.submitList(currentGalleries)
+    }
+
+    private fun navigateToGalleryDetail(galleryName: String) {
+        // Hide the recycler view and fab
+        binding.recyclerViewGalleries.visibility = View.GONE
+        binding.fabAddGallery.visibility = View.GONE
+
+        // Create a new instance of GalleryDetailFragment with the gallery name
+        val fragment = GalleryDetailFragment().apply {
+            arguments = Bundle().apply {
+                putString("gallery_name", galleryName)
             }
         }
-        
-        // Set navigation listener for all menu items
-        navView.setNavigationItemSelectedListener { menuItem ->
-            val menuTitle = menuItem.title.toString()
-            
-            // Check if this is a custom gallery
-            if (customGalleries.contains(menuTitle)) {
-                // Navigate to gallery fragment with gallery name as argument
-                val bundle = bundleOf("gallery_name" to menuTitle)
-                navController.navigate(R.id.nav_gallery, bundle)
-                binding.drawerLayout.closeDrawers()
-                return@setNavigationItemSelectedListener true
-            }
-            
-            // Let the default listener handle other menu items
-            menuItem.isChecked = true
-            navController.navigate(menuItem.itemId)
-            binding.drawerLayout.closeDrawers()
-            true
+
+        // Add fragment to the activity's layout
+        supportFragmentManager.beginTransaction()
+            .add(android.R.id.content, fragment)
+            .addToBackStack(null)
+            .commit()
+    }
+
+    private fun setupFab() {
+        binding.fabAddGallery.setOnClickListener {
+            showAddGalleryDialog()
         }
     }
     
-    private fun showDeleteGalleryDialog(galleryName: String, navView: NavigationView, navController: NavController) {
+    private fun showAddGalleryDialog() {
+        // Create a custom dialog
+        val dialog = Dialog(this)
+        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
+        dialog.setContentView(R.layout.dialog_create_gallery)
+        
+        // Make dialog background transparent to show rounded corners
+        dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+        
+        // Get references to dialog views
+        val nameInput = dialog.findViewById<EditText>(R.id.edit_gallery_name)
+        val cancelButton = dialog.findViewById<Button>(R.id.btn_create_gallery_cancel)
+        val createButton = dialog.findViewById<Button>(R.id.btn_create_gallery_confirm)
+        
+        // Set click listeners
+        cancelButton.setOnClickListener {
+            dialog.dismiss()
+        }
+        
+        createButton.setOnClickListener {
+            val galleryName = nameInput.text.toString().trim()
+            
+            when {
+                galleryName.isEmpty() -> {
+                    nameInput.error = "Gallery name cannot be empty"
+                }
+                customGalleries.contains(galleryName) -> {
+                    nameInput.error = "Gallery with this name already exists"
+                }
+                else -> {
+                    // Add new gallery
+                    customGalleries.add(galleryName)
+                    saveGalleries()
+                    
+                    // Update RecyclerView
+                    val currentList = galleryAdapter.currentList.toMutableList()
+                    currentList.add(GalleryItem(galleryName))
+                    galleryAdapter.submitList(currentList)
+                    
+                    dialog.dismiss()
+                }
+            }
+        }
+        
+        dialog.show()
+    }
+    
+    private fun showDeleteGalleryDialog(galleryItem: GalleryItem) {
         // Create a custom dialog
         val dialog = Dialog(this)
         dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
@@ -174,7 +317,7 @@ class MainActivity : AppCompatActivity() {
         
         // Set dialog text
         titleTextView.text = "Delete Gallery"
-        messageTextView.text = "Are you sure you want to delete the gallery '$galleryName'? This action cannot be undone."
+        messageTextView.text = "Are you sure you want to delete the gallery '${galleryItem.name}'? This action cannot be undone."
         
         // Set click listeners
         cancelButton.setOnClickListener {
@@ -182,173 +325,85 @@ class MainActivity : AppCompatActivity() {
         }
         
         deleteButton.setOnClickListener {
-            deleteGallery(galleryName, navView, navController)
+            // Remove gallery
+            customGalleries.remove(galleryItem.name)
+            saveGalleries()
+            
+            // Update RecyclerView
+            val currentList = galleryAdapter.currentList.toMutableList()
+            currentList.remove(galleryItem)
+            galleryAdapter.submitList(currentList)
+            
             dialog.dismiss()
         }
         
         dialog.show()
     }
-    
-    private fun deleteGallery(galleryName: String, navView: NavigationView, navController: NavController) {
-        // Remove gallery from list
-        customGalleries.remove(galleryName)
-        
-        // Save updated galleries list
-        saveGalleries()
-        
-        // Delete associated barcodes
-        deleteGalleryBarcodes(galleryName)
-        
-        // Rebuild the navigation menu
-        rebuildNavigationMenu(navView, navController)
-        
-        // If all galleries are deleted, show the create gallery dialog
-        if (customGalleries.isEmpty()) {
-            showAddGalleryDialog(navView, navController)
-        } else {
-            // Navigate to another gallery if we're in the deleted gallery
-            if (navController.currentBackStackEntry?.arguments?.getString("gallery_name") == galleryName) {
-                val firstGallery = customGalleries.first()
-                val bundle = bundleOf("gallery_name" to firstGallery)
-                navController.navigate(R.id.nav_gallery, bundle)
-            }
-        }
-        
-        Toast.makeText(this, "Gallery '$galleryName' deleted", Toast.LENGTH_SHORT).show()
-    }
-    
-    private fun deleteGalleryBarcodes(galleryName: String) {
-        // Delete the associated barcodes from SharedPreferences
-        val editor = sharedPreferences.edit()
-        editor.remove("barcodes_$galleryName")
-        editor.apply()
-    }
-    
-    private fun rebuildNavigationMenu(navView: NavigationView, navController: NavController) {
-        // Clear the gallery group
-        val menu = navView.menu
-        menu.removeGroup(R.id.gallery_group)
-        
-        // Re-add the group
-        menu.addSubMenu(Menu.NONE, R.id.gallery_group, Menu.NONE, "")
-        
-        // Restore galleries to menu
-        restoreGalleriesToMenu(navView, navController)
-    }
-    
-    private fun showAddGalleryDialog(navView: NavigationView, navController: NavController) {
+
+    private fun showEditGalleryDialog(galleryItem: GalleryItem) {
         // Create a custom dialog
         val dialog = Dialog(this)
         dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
-        dialog.setContentView(R.layout.dialog_create_gallery)
-        
+        dialog.setContentView(R.layout.dialog_edit_gallery)
+
         // Make dialog background transparent to show rounded corners
         dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
-        
+
         // Get references to dialog views
-        val input = dialog.findViewById<EditText>(R.id.edit_gallery_name)
-        val cancelButton = dialog.findViewById<Button>(R.id.btn_create_gallery_cancel)
-        val createButton = dialog.findViewById<Button>(R.id.btn_create_gallery_confirm)
-        
+        val nameInput = dialog.findViewById<EditText>(R.id.edit_gallery_name)
+        val cancelButton = dialog.findViewById<Button>(R.id.btn_edit_gallery_cancel)
+        val saveButton = dialog.findViewById<Button>(R.id.btn_edit_gallery_confirm)
+
+        // Set initial name in the input field
+        nameInput.setText(galleryItem.name)
+
         // Set click listeners
         cancelButton.setOnClickListener {
             dialog.dismiss()
         }
-        
-        createButton.setOnClickListener {
-            val galleryName = input.text.toString().trim()
-            if (galleryName.isNotEmpty()) {
-                createNewGallery(galleryName, navView, navController)
-                dialog.dismiss()
-            } else {
-                Toast.makeText(this, "Gallery name cannot be empty", Toast.LENGTH_SHORT).show()
+
+        saveButton.setOnClickListener {
+            val newName = nameInput.text.toString().trim()
+
+            when {
+                newName.isEmpty() -> {
+                    nameInput.error = "Gallery name cannot be empty"
+                }
+
+                customGalleries.contains(newName) -> {
+                    nameInput.error = "Gallery with this name already exists"
+                }
+
+                else -> {
+                    // Update the gallery name in the list
+                    customGalleries[customGalleries.indexOf(galleryItem.name)] = newName
+                    saveGalleries()
+
+                    // Update RecyclerView
+                    val currentList = galleryAdapter.currentList.toMutableList()
+                    val index = currentList.indexOfFirst { it.name == galleryItem.name }
+                    if (index != -1) {
+                        currentList[index] = GalleryItem(newName)
+                        galleryAdapter.submitList(currentList)
+                    }
+
+                    dialog.dismiss()
+                }
             }
         }
-        
+
         dialog.show()
     }
-    
-    private fun createNewGallery(galleryName: String, navView: NavigationView, navController: NavController) {
-        if (!customGalleries.contains(galleryName)) {
-            // Add new gallery to the list
-            customGalleries.add(galleryName)
-            
-            // Save galleries to SharedPreferences
-            saveGalleries()
-            
-            // Add new gallery to the navigation menu
-            val menu = navView.menu
-            val newItemId = View.generateViewId()
-            val newItem = menu.add(R.id.gallery_group, newItemId, Menu.NONE, galleryName)
-            newItem.setIcon(R.drawable.ic_menu_gallery)
-            newItem.isCheckable = true
-            // Add delete icon to the new gallery (same as restoreGalleriesToMenu)
-            newItem.setActionView(R.layout.menu_item_delete)
-            val deleteView = newItem.actionView
-            deleteView?.findViewById<View>(R.id.btn_delete_gallery)?.setOnClickListener {
-                showDeleteGalleryDialog(galleryName, navView, navController)
-            }
-            
-            Toast.makeText(this, "Gallery '$galleryName' created", Toast.LENGTH_SHORT).show()
-            
-            // Navigate to the new gallery immediately
-            val bundle = bundleOf("gallery_name" to galleryName)
-            navController.navigate(R.id.nav_gallery, bundle)
-            binding.drawerLayout.closeDrawers()
+
+    @Deprecated("Deprecated in Java")
+    override fun onBackPressed() {
+        // If there are fragments in the back stack, pop them
+        if (supportFragmentManager.backStackEntryCount > 0) {
+            supportFragmentManager.popBackStack()
         } else {
-            Toast.makeText(this, "Gallery '$galleryName' already exists", Toast.LENGTH_SHORT).show()
+            // Otherwise, use the default behavior
+            @Suppress("DEPRECATION")
+            super.onBackPressed()
         }
-    }
-    
-    private fun setupGalleryManagement(navView: NavigationView, navController: NavController) {
-        val headerView = navView.getHeaderView(0)
-        
-        // Set up the FAB in the header
-        val fabAddGalleryHeader = headerView.findViewById<FloatingActionButton>(R.id.fab_add_gallery_header)
-        fabAddGalleryHeader.setOnClickListener {
-            showAddGalleryDialog(navView, navController)
-        }
-    }
-
-    private fun setAppVersion() {
-        try {
-            val packageInfo = packageManager.getPackageInfo(packageName, 0)
-            val versionName = packageInfo.versionName ?: "Unknown"
-            val versionCode = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
-                packageInfo.longVersionCode
-            } else {
-                @Suppress("DEPRECATION")
-                packageInfo.versionCode.toLong()
-            }
-            
-            // Format the version as per our scheme (YY.MM.VV)
-            val (year, month, version) = try {
-                VersionHelper.parseVersionName(versionName)
-            } catch (e: Exception) {
-                Triple(0, 0, 0) // Default values if parsing fails
-            }
-            
-            val formattedVersion = when {
-                year > 0 -> "v${versionName} (${year}/Q${(month-1)/3 + 1}/P${version})"
-                else -> "v${versionName}"
-            }
-            
-            val navHeaderView = binding.navView.getHeaderView(0)
-            val versionTextView = navHeaderView.findViewById<TextView>(R.id.version_text)
-            versionTextView.text = formattedVersion
-        } catch (e: PackageManager.NameNotFoundException) {
-            e.printStackTrace()
-        }
-    }
-
-    override fun onCreateOptionsMenu(menu: Menu): Boolean {
-        // Inflate the menu; this adds items to the action bar if it is present.
-        menuInflater.inflate(R.menu.main, menu)
-        return true
-    }
-
-    override fun onSupportNavigateUp(): Boolean {
-        val navController = findNavController(R.id.nav_host_fragment_content_main)
-        return navController.navigateUp(appBarConfiguration) || super.onSupportNavigateUp()
     }
 }

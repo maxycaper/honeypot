@@ -34,4 +34,5 @@
     <color name="text_primary">#FFFFFF</color>      <!-- Maximum contrast for text -->
     <color name="text_secondary">#D0D0D0</color>    <!-- Brighter secondary text -->
     <color name="divider">#484848</color>           <!-- Slightly lighter divider -->
+    <color name="fab_vibrant_purple">#C747ED</color> <!-- Vibrant purple for FABs -->
 </resources>

@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:layout_margin="16dp"
@@ -24,9 +25,9 @@
                 android:id="@+id/dialog_title"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:fontFamily="@font/lora"
+                android:fontFamily="sans-serif-medium"
                 android:gravity="center"
-                android:text="Barcode Display"
+                android:text="PRODUCT_DEBUG: Barcode Display"
                 android:textColor="@color/neon_purple"
                 android:textSize="22sp"
                 android:textStyle="bold" />
@@ -36,6 +37,7 @@
                 android:layout_height="wrap_content"
                 android:layout_gravity="center_horizontal"
                 android:layout_marginTop="16dp"
+                android:gravity="center"
                 android:orientation="vertical">
 
                 <FrameLayout
@@ -122,7 +124,8 @@
                 android:layout_marginTop="16dp"
                 android:gravity="center"
                 android:textColor="@color/neon_hot_pink"
-                android:textSize="16sp" />
+                android:textSize="16sp"
+                tools:text="PRODUCT_DEBUG: value='1234567890'" />
 
             <TextView
                 android:id="@+id/barcode_format"
@@ -131,7 +134,8 @@
                 android:layout_marginTop="8dp"
                 android:gravity="center"
                 android:textColor="@color/white"
-                android:textSize="14sp" />
+                android:textSize="14sp"
+                tools:text="PRODUCT_DEBUG: productName='Coca-Cola Classic'" />
 
             <TextView
                 android:id="@+id/barcode_description"
@@ -142,7 +146,8 @@
                 android:padding="12dp"
                 android:textColor="@color/neon_hot_pink"
                 android:textSize="14sp"
-                android:visibility="gone" />
+                android:visibility="visible"
+                tools:text="PRODUCT_DEBUG: title='Coca-Cola Classic'" />
 
             <TextView
                 android:id="@+id/barcode_hint"
@@ -185,4 +190,4 @@
         </LinearLayout>
     </ScrollView>
 
-</androidx.cardview.widget.CardView> 
+</androidx.cardview.widget.CardView>

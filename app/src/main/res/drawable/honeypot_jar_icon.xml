@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="200dp"
+    android:height="200dp"
+    android:viewportWidth="512"
+    android:viewportHeight="512">
+
+    <!-- Outer glow -->
+    <path
+        android:fillColor="#50FFFFFF"
+        android:pathData="M256,116c-83.8,0 -152,68.2 -152,152c0,83.8 68.2,152 152,152s152,-68.2 152,-152C408,184.2 339.8,116 256,116z" />
+
+    <!-- Jar outline -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#5CFFFF"
+        android:strokeWidth="8"
+        android:pathData="M320,164H192c-17.7,0 -32,14.3 -32,32v160c0,17.7 14.3,32 32,32h128c17.7,0 32,-14.3 32,-32V196C352,178.3 337.7,164 320,164z" />
+
+    <!-- Jar lid -->
+    <path
+        android:fillColor="#FF47E1"
+        android:pathData="M336,176H176c-8.8,0 -16,-7.2 -16,-16v-8c0,-8.8 7.2,-16 16,-16h160c8.8,0 16,7.2 16,16v8C352,168.8 344.8,176 336,176z" />
+
+    <!-- Honey inside jar -->
+    <path
+        android:fillColor="#FFAD5C"
+        android:pathData="M320,196v128c0,8.8 -7.2,16 -16,16H208c-8.8,0 -16,-7.2 -16,-16V196c0,-8.8 7.2,-16 16,-16h96C312.8,180 320,187.2 320,196z" />
+
+    <!-- Honey surface details -->
+    <path
+        android:fillColor="#FFD000"
+        android:pathData="M320,210c-0.5,-2.1 -2.2,-3.5 -4.3,-3.5H196.3c-2.1,0 -3.8,1.4 -4.3,3.5c-0.5,2.1 0.5,4.2 2.4,5.2c16.6,8.8 34.9,13.5 53.6,13.5s37,-4.7 53.6,-13.5C303.5,214.2 304.5,212.1 304,210z" />
+
+    <!-- Shine effects -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M220,196c4.4,0 8,3.6 8,8s-3.6,8 -8,8s-8,-3.6 -8,-8S215.6,196 220,196z" />
+
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M240,244c6.6,0 12,5.4 12,12s-5.4,12 -12,12s-12,-5.4 -12,-12S233.4,244 240,244z" />
+
+    <!-- Honey drips -->
+    <path
+        android:fillColor="#FFAD5C"
+        android:pathData="M256,180c0,0 0,16 0,24s8,8 8,0s0,-24 0,-24" />
+
+    <path
+        android:fillColor="#FFAD5C"
+        android:pathData="M280,180c0,0 0,12 0,20s8,8 8,0s0,-20 0,-20" />
+</vector>

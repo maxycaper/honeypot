@@ -10,13 +10,13 @@
         android:id="@+id/dialog_title"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:fontFamily="@font/lora"
+        android:fontFamily="sans-serif-medium"
         android:gravity="center"
         android:paddingTop="24dp"
         android:paddingBottom="16dp"
         android:text="Create New Gallery"
-        android:textColor="@color/neon_hot_pink"
-        android:textSize="20sp"
+        android:textColor="@color/neon_purple"
+        android:textSize="22sp"
         android:textStyle="bold" />
 
     <!-- Input field -->
@@ -65,4 +65,4 @@
             android:text="Create"
             android:textColor="@color/white" />
     </LinearLayout>
-</LinearLayout> 
+</LinearLayout>
