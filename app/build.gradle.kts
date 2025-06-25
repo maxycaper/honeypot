@@ -24,6 +24,7 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            signingConfig = signingConfigs.getByName("debug")
         }
     }
     compileOptions {
@@ -37,10 +38,17 @@ android {
         viewBinding = true
         dataBinding = true
     }
-    
+
     testOptions {
         unitTests {
             isIncludeAndroidResources = true
+        }
+    }
+
+    applicationVariants.all {
+        outputs.all {
+            val outputImpl = this as com.android.build.gradle.internal.api.BaseVariantOutputImpl
+            outputImpl.outputFileName = "Honeypot-${versionName}-${buildType.name}.apk"
         }
     }
 }
@@ -55,25 +63,25 @@ dependencies {
     implementation(libs.androidx.lifecycle.viewmodel.ktx)
     implementation(libs.androidx.navigation.fragment.ktx)
     implementation(libs.androidx.navigation.ui.ktx)
-    
+
     // JSON processing
     implementation("com.google.code.gson:gson:2.10.1")
-    
+
     // Barcode scanning
     implementation("com.google.android.gms:play-services-mlkit-barcode-scanning:18.3.0")
     implementation("androidx.camera:camera-camera2:1.3.0")
     implementation("androidx.camera:camera-lifecycle:1.3.0")
     implementation("androidx.camera:camera-view:1.3.0")
-    
+
     // Barcode generation
     implementation("com.journeyapps:zxing-android-embedded:4.3.0")
-    
+
     // Network and API calls
     implementation("com.squareup.retrofit2:retrofit:2.9.0")
     implementation("com.squareup.retrofit2:converter-gson:2.9.0")
     implementation("com.squareup.okhttp3:okhttp:4.11.0")
     implementation("com.squareup.okhttp3:logging-interceptor:4.11.0")
-    
+
     // Testing dependencies
     testImplementation(libs.junit)
     testImplementation("org.mockito:mockito-core:5.2.0")
