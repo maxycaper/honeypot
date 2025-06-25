@@ -63,8 +63,10 @@ class MainActivity : AppCompatActivity() {
         setSupportActionBar(binding.toolbar)
 
         // Add top margin to toolbar and toolbar background to account for status bar
+        // Also add bottom padding to RecyclerView and bottom margin to FAB to avoid overlap with navigation bar
         binding.root.setOnApplyWindowInsetsListener { view, insets ->
             val statusBarHeight = insets.systemWindowInsetTop
+            val navigationBarHeight = insets.systemWindowInsetBottom
 
             // Add top margin to toolbar background
             val toolbarBgParams =
@@ -77,6 +79,23 @@ class MainActivity : AppCompatActivity() {
                 binding.toolbar.layoutParams as androidx.constraintlayout.widget.ConstraintLayout.LayoutParams
             toolbarParams.topMargin = statusBarHeight
             binding.toolbar.layoutParams = toolbarParams
+
+            // Add bottom padding to RecyclerView to avoid overlap with navigation bar
+            val recyclerViewParams =
+                binding.recyclerViewGalleries.layoutParams as androidx.constraintlayout.widget.ConstraintLayout.LayoutParams
+            binding.recyclerViewGalleries.setPadding(
+                binding.recyclerViewGalleries.paddingLeft,
+                binding.recyclerViewGalleries.paddingTop,
+                binding.recyclerViewGalleries.paddingRight,
+                88 + navigationBarHeight // 88dp for FAB space + navigation bar height
+            )
+
+            // Add bottom margin to FAB to avoid overlap with navigation bar
+            val fabParams =
+                binding.fabAddGallery.layoutParams as androidx.constraintlayout.widget.ConstraintLayout.LayoutParams
+            fabParams.bottomMargin =
+                16 + navigationBarHeight // Original margin + navigation bar height
+            binding.fabAddGallery.layoutParams = fabParams
 
             insets
         }
