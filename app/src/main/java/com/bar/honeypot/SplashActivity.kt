@@ -17,8 +17,10 @@ import java.util.Locale
 
 class SplashActivity : AppCompatActivity() {
 
+
     private val handler = Handler(Looper.getMainLooper())
     private val delay = 2000L // 2 seconds
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -43,10 +45,12 @@ class SplashActivity : AppCompatActivity() {
             navigateToMainActivity()
         }
 
+
         // Auto dismiss splash after 2 seconds
         handler.postDelayed({
             navigateToMainActivity()
         }, delay)
+
     }
 
     private fun setVersionText() {
@@ -79,6 +83,7 @@ class SplashActivity : AppCompatActivity() {
     }
 
     private fun navigateToMainActivity() {
+
         // Remove any pending auto-navigation callbacks
         handler.removeCallbacksAndMessages(null)
 
