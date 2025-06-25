@@ -77,6 +77,19 @@ class GalleryDetailFragment : Fragment() {
         // Inflate the layout for this fragment
         val view = inflater.inflate(R.layout.fragment_gallery_detail, container, false)
 
+        // Handle status bar overlap
+        view.setOnApplyWindowInsetsListener { v, insets ->
+            val statusBarHeight = insets.systemWindowInsetTop
+            
+            // Add top margin to header background and back button to account for status bar
+            val headerBackground = view.findViewById<View>(R.id.headerBackground)
+            val headerParams = headerBackground.layoutParams as androidx.constraintlayout.widget.ConstraintLayout.LayoutParams
+            headerParams.topMargin = statusBarHeight
+            headerBackground.layoutParams = headerParams
+            
+            insets
+        }
+
         // Get gallery name from arguments
         arguments?.let {
             galleryName = it.getString("gallery_name", "Gallery")
