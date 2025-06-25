@@ -35,15 +35,19 @@ import com.google.zxing.Result
 import com.google.zxing.NotFoundException
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.Color
+import android.graphics.drawable.ColorDrawable
+import android.view.Window
+import android.widget.Button
+import android.app.Dialog
 import androidx.camera.core.FocusMeteringAction
 import com.google.mlkit.vision.barcode.common.Barcode
+import com.google.mlkit.vision.common.InputImage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
-import androidx.appcompat.app.AlertDialog
-import com.google.mlkit.vision.common.InputImage
 
 @OptIn(ExperimentalCamera2Interop::class)
 class BarcodeScannerActivity : AppCompatActivity() {
@@ -72,8 +76,8 @@ class BarcodeScannerActivity : AppCompatActivity() {
         const val BARCODE_WIFI_TYPE = "barcode_wifi_type"
         const val BARCODE_GEO_LAT = "barcode_geo_lat"
         const val BARCODE_GEO_LNG = "barcode_geo_lng"
-        const val BARCODE_PRODUCT_NAME = "barcode_product_name"
         const val BARCODE_CONTACT_INFO = "barcode_contact_info"
+        const val BARCODE_PRODUCT_NAME = "barcode_product_name"
         const val BARCODE_PRODUCT_BRAND = "barcode_product_brand"
         const val BARCODE_PRODUCT_IMAGE_URL = "barcode_product_image_url"
     }
@@ -540,19 +544,34 @@ class BarcodeScannerActivity : AppCompatActivity() {
     }
 
     private fun showScanAgainDialog() {
-        val builder = androidx.appcompat.app.AlertDialog.Builder(this)
-        builder.setTitle("Barcode Not Recognized")
-        builder.setMessage("The barcode could not be recognized. Please try again or enter it manually.")
-        builder.setPositiveButton("Scan Again") { dialog, _ ->
-            dialog.dismiss()
-            isProcessingBarcode = false
-        }
-        builder.setNegativeButton("Manual Entry") { dialog, _ ->
+        val dialog = Dialog(this)
+        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
+        dialog.setContentView(R.layout.dialog_barcode_not_recognized)
+        dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+
+        // Set up dialog views
+        val manualEntryOption = dialog.findViewById<View>(R.id.option_manual_entry)
+        val scanAgainOption = dialog.findViewById<View>(R.id.option_scan_again)
+        val cancelButton = dialog.findViewById<Button>(R.id.btn_cancel)
+
+        // Set click listeners
+        manualEntryOption.setOnClickListener {
             dialog.dismiss()
             finish() // Or launch manual entry activity/fragment
         }
-        builder.setCancelable(false)
-        builder.show()
+
+        scanAgainOption.setOnClickListener {
+            dialog.dismiss()
+            isProcessingBarcode = false
+        }
+
+        cancelButton.setOnClickListener {
+            dialog.dismiss()
+            finish()
+        }
+
+        dialog.setCancelable(false)
+        dialog.show()
     }
 
     private fun decodeWithZXingLegacy(imageProxy: ImageProxy): Result? {

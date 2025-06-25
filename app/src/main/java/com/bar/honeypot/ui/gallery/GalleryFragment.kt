@@ -124,15 +124,25 @@ class GalleryFragment : Fragment() {
                     Log.e("PRODUCT_DEBUG", "DUPLICATE BARCODE DETECTED - showing alert")
                     // Show alert for duplicate barcode instead of updating
                     context?.let { ctx ->
-                        val dialog = android.app.AlertDialog.Builder(ctx)
-                            .setTitle("Duplicate Barcode")
-                            .setMessage("This barcode already exists in '$galleryName'.\n\nBarcode: $barcodeValue")
-                            .setIcon(android.R.drawable.ic_dialog_alert)
-                            .setPositiveButton("OK") { dialog, _ ->
-                                dialog.dismiss()
-                            }
-                            .setCancelable(true)
-                            .create()
+                        val dialog = Dialog(ctx)
+                        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
+                        dialog.setContentView(R.layout.dialog_duplicate_barcode)
+                        dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+                        
+                        // Set up dialog views
+                        val messageTextView = dialog.findViewById<TextView>(R.id.dialog_message)
+                        val barcodeValueTextView = dialog.findViewById<TextView>(R.id.barcode_value)
+                        val okButton = dialog.findViewById<Button>(R.id.btn_ok)
+                        
+                        // Set the message and barcode value
+                        messageTextView.text = "This barcode already exists in '$galleryName'."
+                        barcodeValueTextView.text = barcodeValue
+                        
+                        // Set button listener
+                        okButton.setOnClickListener {
+                            dialog.dismiss()
+                        }
+                        
                         dialog.show()
                     }
                 } else {
