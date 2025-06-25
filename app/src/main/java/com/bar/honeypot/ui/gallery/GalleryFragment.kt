@@ -121,21 +121,19 @@ class GalleryFragment : Fragment() {
             if (barcodeValue != null && barcodeFormat != null) {
                 // Check if this barcode already exists in the gallery
                 if (galleryViewModel.isDuplicateBarcode(barcodeValue)) {
-                    Log.e("PRODUCT_DEBUG", "DUPLICATE BARCODE DETECTED - updating existing")
-                    // Update logic for duplicate barcode
-                    if (!productName.isNullOrEmpty() || !productBrand.isNullOrEmpty() || !productImageUrl.isNullOrEmpty()) {
-                        val updated = galleryViewModel.updateBarcodeProductInfo(
-                            barcodeValue = barcodeValue,
-                            productName = productName,
-                            productBrand = productBrand,
-                            productImageUrl = productImageUrl
-                        )
-                        if (updated) {
-                            saveBarcodesToSharedPreferences()
-                            Toast.makeText(context, "Product information updated: $productName", Toast.LENGTH_SHORT).show()
-                        } else {
-                            Toast.makeText(context, "Failed to update product information", Toast.LENGTH_SHORT).show()
-                        }
+                    Log.e("PRODUCT_DEBUG", "DUPLICATE BARCODE DETECTED - showing alert")
+                    // Show alert for duplicate barcode instead of updating
+                    context?.let { ctx ->
+                        val dialog = android.app.AlertDialog.Builder(ctx)
+                            .setTitle("Duplicate Barcode")
+                            .setMessage("This barcode already exists in '$galleryName'.\n\nBarcode: $barcodeValue")
+                            .setIcon(android.R.drawable.ic_dialog_alert)
+                            .setPositiveButton("OK") { dialog, _ ->
+                                dialog.dismiss()
+                            }
+                            .setCancelable(true)
+                            .create()
+                        dialog.show()
                     }
                 } else {
                     Log.e("PRODUCT_DEBUG", "NEW BARCODE - adding to gallery")

@@ -994,6 +994,24 @@ class GalleryDetailFragment : Fragment() {
     }
 
     private fun addBarcode(value: String, format: String, title: String = "") {
+        // Check if this barcode already exists in the gallery
+        if (barcodes.any { it.value == value }) {
+            // Show alert for duplicate barcode instead of adding
+            context?.let { ctx ->
+                val dialog = android.app.AlertDialog.Builder(ctx)
+                    .setTitle("Duplicate Barcode")
+                    .setMessage("This barcode already exists in '$galleryName'.\n\nBarcode: $value")
+                    .setIcon(android.R.drawable.ic_dialog_alert)
+                    .setPositiveButton("OK") { dialog, _ ->
+                        dialog.dismiss()
+                    }
+                    .setCancelable(true)
+                    .create()
+                dialog.show()
+            }
+            return
+        }
+
         // Create new barcode
         val newBarcode = BarcodeData(
             value = value,
@@ -1177,6 +1195,24 @@ class GalleryDetailFragment : Fragment() {
         contactInfo: String = "",
         productImageUrl: String = ""
     ) {
+        // Check if this barcode already exists in the gallery
+        if (barcodes.any { it.value == value }) {
+            // Show alert for duplicate barcode instead of adding
+            context?.let { ctx ->
+                val dialog = android.app.AlertDialog.Builder(ctx)
+                    .setTitle("Duplicate Barcode")
+                    .setMessage("This barcode already exists in '$galleryName'.\n\nBarcode: $value")
+                    .setIcon(android.R.drawable.ic_dialog_alert)
+                    .setPositiveButton("OK") { dialog, _ ->
+                        dialog.dismiss()
+                    }
+                    .setCancelable(true)
+                    .create()
+                dialog.show()
+            }
+            return
+        }
+
         // Create new barcode with all information
         val newBarcode = BarcodeData(
             value = value,
