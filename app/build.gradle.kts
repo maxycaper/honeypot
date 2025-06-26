@@ -14,6 +14,7 @@ android {
         versionCode = 250623
         versionName = "25.06.23"
 
+
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
