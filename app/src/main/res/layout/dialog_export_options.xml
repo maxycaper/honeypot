@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@drawable/rounded_dialog_background"
+    android:orientation="vertical"
+    android:padding="24dp">
+
+    <TextView
+        android:id="@+id/dialog_title"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:fontFamily="@font/lora"
+        android:gravity="center"
+        android:text="Export Data"
+        android:textColor="@color/neon_green"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        android:layout_marginBottom="16dp" />
+
+    <TextView
+        android:id="@+id/dialog_message"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:fontFamily="@font/lora"
+        android:gravity="center"
+        android:text="Choose how to export your galleries and barcode data"
+        android:textColor="@color/text_primary"
+        android:textSize="14sp"
+        android:layout_marginBottom="24dp" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:layout_marginBottom="16dp">
+
+        <Button
+            android:id="@+id/btn_export_file"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:layout_marginBottom="12dp"
+            android:background="@drawable/rounded_button_background"
+            android:fontFamily="@font/lora"
+            android:text="📁 Export to File"
+            android:textColor="@color/white"
+            android:textSize="16sp"
+            android:drawableStart="@drawable/ic_export"
+            android:drawablePadding="12dp"
+            android:gravity="start|center_vertical"
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp" />
+
+        <Button
+            android:id="@+id/btn_export_email"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:background="@drawable/rounded_button_background"
+            android:fontFamily="@font/lora"
+            android:text="📧 Export via Email"
+            android:textColor="@color/white"
+            android:textSize="16sp"
+            android:drawableStart="@drawable/ic_email"
+            android:drawablePadding="12dp"
+            android:gravity="start|center_vertical"
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp" />
+
+    </LinearLayout>
+
+    <Button
+        android:id="@+id/btn_export_cancel"
+        android:layout_width="wrap_content"
+        android:layout_height="48dp"
+        android:layout_gravity="center"
+        android:background="@drawable/rounded_button_background"
+        android:fontFamily="@font/lora"
+        android:text="Cancel"
+        android:textColor="@color/white"
+        android:textSize="14sp" />
+
+</LinearLayout>

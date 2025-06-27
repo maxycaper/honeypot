@@ -17,6 +17,7 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import androidx.core.os.bundleOf
 import androidx.core.view.WindowCompat
 import androidx.core.view.ViewCompat
@@ -48,7 +49,6 @@ import android.graphics.Color
 import android.graphics.Canvas
 import android.graphics.drawable.ColorDrawable
 import android.graphics.drawable.Drawable
-import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -623,31 +623,80 @@ class MainActivity : AppCompatActivity() {
     private fun showExportDialog() {
         val dialog = Dialog(this)
         dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
-        dialog.setContentView(R.layout.dialog_export_import)
+        dialog.setContentView(R.layout.dialog_export_options)
 
         // Make dialog background transparent to show rounded corners
         dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
 
         val titleTextView = dialog.findViewById<TextView>(R.id.dialog_title)
         val messageTextView = dialog.findViewById<TextView>(R.id.dialog_message)
-        val cancelButton = dialog.findViewById<Button>(R.id.btn_export_import_cancel)
-        val actionButton = dialog.findViewById<Button>(R.id.btn_export_import_action)
+        val cancelButton = dialog.findViewById<Button>(R.id.btn_export_cancel)
+        val fileButton = dialog.findViewById<Button>(R.id.btn_export_file)
+        val emailButton = dialog.findViewById<Button>(R.id.btn_export_email)
 
         titleTextView.text = "Export Data"
-        messageTextView.text = "Export all galleries, barcodes, and sub-galleries to a JSON file"
-        actionButton.text = "Export"
+        messageTextView.text = "Choose how to export your galleries and barcode data"
 
         cancelButton.setOnClickListener {
             dialog.dismiss()
         }
 
-        actionButton.setOnClickListener {
+        fileButton.setOnClickListener {
+            dialog.dismiss()
             val fileName = "Honeypot_${SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())}.json"
             exportLauncher.launch(fileName)
+        }
+
+        emailButton.setOnClickListener {
             dialog.dismiss()
+            exportViaEmail()
         }
 
         dialog.show()
+    }
+
+    // Export data via email
+    private fun exportViaEmail() {
+        try {
+            val exportedData = exportGalleries()
+            val fileName = "Honeypot_${SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())}.json"
+            
+            // Create a temporary file
+            val tempFile = File(cacheDir, fileName)
+            tempFile.writeText(exportedData)
+            
+            // Create content URI for the file
+            val uri = androidx.core.content.FileProvider.getUriForFile(
+                this,
+                "com.bar.honeypot.fileprovider",
+                tempFile
+            )
+            
+            // Create email intent
+            val emailIntent = Intent(Intent.ACTION_SEND).apply {
+                type = "application/json"
+                putExtra(Intent.EXTRA_EMAIL, arrayOf("")) // Empty, user can fill in
+                putExtra(Intent.EXTRA_SUBJECT, "Honeypot Data Export - $fileName")
+                putExtra(Intent.EXTRA_TEXT, 
+                    "Hello,\n\n" +
+                    "Please find attached my Honeypot barcode data export.\n\n" +
+                    "Export contains:\n" +
+                    "• ${customGalleries.size} galleries\n" +
+                    "• All barcode data and metadata\n" +
+                    "• Sub-galleries\n\n" +
+                    "Generated on: ${SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())}\n\n" +
+                    "Best regards"
+                )
+                putExtra(Intent.EXTRA_STREAM, uri)
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+            
+            // Start email chooser
+            startActivity(Intent.createChooser(emailIntent, "Send Honeypot Data via Email"))
+            
+        } catch (e: Exception) {
+            Toast.makeText(this, "Failed to prepare email export: ${e.message}", Toast.LENGTH_LONG).show()
+        }
     }
 
     // Create and show the import menu
