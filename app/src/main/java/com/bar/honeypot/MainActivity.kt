@@ -1,46 +1,57 @@
 package com.bar.honeypot
 
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Bundle
+import android.os.Environment
 import android.view.Menu
+import android.view.MenuInflater
+import android.view.MenuItem
 import android.view.View
+import android.view.Window
+import android.widget.Button
 import android.widget.EditText
-import android.widget.ImageButton
-import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AppCompatActivity
+import androidx.core.os.bundleOf
+import androidx.core.view.WindowCompat
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.updatePadding
+import androidx.navigation.NavController
+import androidx.navigation.NavDestination
 import androidx.navigation.findNavController
 import androidx.navigation.ui.AppBarConfiguration
 import androidx.navigation.ui.navigateUp
 import androidx.navigation.ui.setupActionBarWithNavController
-import androidx.appcompat.app.AppCompatActivity
-import androidx.appcompat.app.AlertDialog
-import androidx.core.os.bundleOf
-import androidx.navigation.NavController
-import androidx.navigation.NavDestination
 import com.bar.honeypot.databinding.ActivityMainBinding
+import com.bar.honeypot.model.BarcodeData
+import com.bar.honeypot.ui.gallery.GalleryDetailFragment
+import com.bar.honeypot.ui.gallery.GalleryItem
+import com.bar.honeypot.ui.gallery.GalleryListAdapter
 import com.bar.honeypot.util.VersionHelper
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
-import android.graphics.Color
-import android.graphics.drawable.ColorDrawable
-import android.view.Window
+import java.io.File
+import java.io.FileOutputStream
+import java.io.IOException
+import java.text.SimpleDateFormat
+import java.util.*
 import android.app.Dialog
 import android.content.SharedPreferences
-import android.widget.Button
-import androidx.recyclerview.widget.LinearLayoutManager
-import com.bar.honeypot.ui.gallery.GalleryListAdapter
-import com.bar.honeypot.ui.gallery.GalleryDetailFragment
-import com.bar.honeypot.ui.gallery.GalleryItem
+import android.graphics.Color
 import android.graphics.Canvas
+import android.graphics.drawable.ColorDrawable
 import android.graphics.drawable.Drawable
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.ItemTouchHelper
+import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import java.util.ArrayList
-import androidx.core.view.WindowCompat
 
 class MainActivity : AppCompatActivity() {
 
@@ -50,6 +61,45 @@ class MainActivity : AppCompatActivity() {
     private val PREFS_NAME = "HoneypotPrefs"
     private val GALLERIES_KEY = "savedGalleries"
     private lateinit var galleryAdapter: GalleryListAdapter
+
+    // Register the file picker for import
+    private val importLauncher = registerForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri: Uri? ->
+        if (uri != null) {
+            try {
+                val inputStream = contentResolver.openInputStream(uri)
+                if (inputStream != null) {
+                    val scanner = Scanner(inputStream)
+                    val text = scanner.useDelimiter("\\A").next()
+                    scanner.close()
+                    inputStream.close()
+                    importGalleries(text)
+                }
+            } catch (e: IOException) {
+                Toast.makeText(this, "Failed to import file: ${e.message}", Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
+    // Register the file picker for export
+    private val exportLauncher = registerForActivityResult(
+        ActivityResultContracts.CreateDocument("text/plain")
+    ) { uri: Uri? ->
+        if (uri != null) {
+            try {
+                val outputStream = contentResolver.openOutputStream(uri)
+                if (outputStream != null) {
+                    val exportedData = exportGalleries()
+                    outputStream.write(exportedData.toByteArray())
+                    outputStream.close()
+                    Toast.makeText(this, "Export successful!", Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: IOException) {
+                Toast.makeText(this, "Failed to export file: ${e.message}", Toast.LENGTH_LONG).show()
+            }
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -432,6 +482,200 @@ class MainActivity : AppCompatActivity() {
                     dialog.dismiss()
                 }
             }
+        }
+
+        dialog.show()
+    }
+
+    // Export all galleries and their data to a file
+    private fun exportGalleries(): String {
+        val gson = Gson()
+        val exportedData = mutableMapOf<String, Any>()
+
+        // Export main galleries
+        exportedData["galleries"] = customGalleries
+
+        // Export barcode data for each gallery
+        val barcodeDataMap = mutableMapOf<String, List<BarcodeData>>()
+        for (galleryName in customGalleries) {
+            val barcodeKey = "barcodes_$galleryName"
+            val barcodeJson = sharedPreferences.getString(barcodeKey, null)
+            if (!barcodeJson.isNullOrEmpty()) {
+                val barcodeType = object : TypeToken<List<BarcodeData>>() {}.type
+                val barcodeList: List<BarcodeData> = gson.fromJson(barcodeJson, barcodeType)
+                barcodeDataMap[galleryName] = barcodeList
+            }
+        }
+        exportedData["barcodes"] = barcodeDataMap
+
+        // Export sub-galleries for each gallery
+        val subgalleriesMap = mutableMapOf<String, List<GalleryItem>>()
+        for (galleryName in customGalleries) {
+            val subgalleryKey = "subgalleries_$galleryName"
+            val subgalleriesJson = sharedPreferences.getString(subgalleryKey, null)
+            if (!subgalleriesJson.isNullOrEmpty()) {
+                val subgalleriesType = object : TypeToken<List<GalleryItem>>() {}.type
+                val subgalleriesList: List<GalleryItem> =
+                    gson.fromJson(subgalleriesJson, subgalleriesType)
+                subgalleriesMap[galleryName] = subgalleriesList
+            }
+        }
+        exportedData["subgalleries"] = subgalleriesMap
+
+        return gson.toJson(exportedData)
+    }
+
+    // Import galleries and their data from a file
+    private fun importGalleries(jsonData: String) {
+        try {
+            val gson = Gson()
+            val importedData = gson.fromJson(
+                jsonData,
+                object : TypeToken<Map<String, Any>>() {}.type
+            ) as Map<String, Any>
+
+            // Extract galleries list
+            val galleriesData = importedData["galleries"] as? List<*>
+            val galleries = galleriesData?.mapNotNull { it as? String } ?: return
+
+            val editor = sharedPreferences.edit()
+
+            // Clear existing data for galleries that will be replaced
+            for (galleryName in customGalleries) {
+                editor.remove("barcodes_$galleryName")
+                editor.remove("subgalleries_$galleryName")
+            }
+
+            // Save new galleries
+            customGalleries.clear()
+            customGalleries.addAll(galleries)
+            val galleriesJson = gson.toJson(customGalleries)
+            editor.putString(GALLERIES_KEY, galleriesJson)
+
+            // Import barcode data
+            val barcodeData = importedData["barcodes"] as? Map<*, *>
+            barcodeData?.forEach { (key, value) ->
+                if (key is String && value is List<*>) {
+                    try {
+                        val barcodeJson = gson.toJson(value)
+                        editor.putString("barcodes_$key", barcodeJson)
+                    } catch (e: Exception) {
+                        // Skip invalid barcode data
+                    }
+                }
+            }
+
+            // Import subgalleries data  
+            val subgalleriesData = importedData["subgalleries"] as? Map<*, *>
+            subgalleriesData?.forEach { (key, value) ->
+                if (key is String && value is List<*>) {
+                    try {
+                        val subgalleriesJson = gson.toJson(value)
+                        editor.putString("subgalleries_$key", subgalleriesJson)
+                    } catch (e: Exception) {
+                        // Skip invalid subgallery data
+                    }
+                }
+            }
+
+            editor.apply()
+
+            // Update RecyclerView
+            val currentGalleries = customGalleries.map { name ->
+                GalleryItem(name, "0 items")
+            }
+            galleryAdapter.submitList(currentGalleries)
+
+            Toast.makeText(
+                this,
+                "Import successful! ${galleries.size} galleries imported.",
+                Toast.LENGTH_LONG
+            ).show()
+
+        } catch (e: Exception) {
+            Toast.makeText(this, "Failed to import data: ${e.message}", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    override fun onCreateOptionsMenu(menu: Menu): Boolean {
+        val inflater: MenuInflater = menuInflater
+        inflater.inflate(R.menu.menu_main, menu)
+        return true
+    }
+
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        return when (item.itemId) {
+            R.id.action_export -> {
+                showExportDialog()
+                true
+            }
+
+            R.id.action_import -> {
+                showImportDialog()
+                true
+            }
+
+            else -> super.onOptionsItemSelected(item)
+        }
+    }
+
+    // Create and show the export menu
+    private fun showExportDialog() {
+        val dialog = Dialog(this)
+        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
+        dialog.setContentView(R.layout.dialog_export_import)
+
+        // Make dialog background transparent to show rounded corners
+        dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+
+        val titleTextView = dialog.findViewById<TextView>(R.id.dialog_title)
+        val messageTextView = dialog.findViewById<TextView>(R.id.dialog_message)
+        val cancelButton = dialog.findViewById<Button>(R.id.btn_export_import_cancel)
+        val actionButton = dialog.findViewById<Button>(R.id.btn_export_import_action)
+
+        titleTextView.text = "Export Data"
+        messageTextView.text = "Export all galleries, barcodes, and sub-galleries to a JSON file"
+        actionButton.text = "Export"
+
+        cancelButton.setOnClickListener {
+            dialog.dismiss()
+        }
+
+        actionButton.setOnClickListener {
+            val fileName = "Honeypot_${SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())}.json"
+            exportLauncher.launch(fileName)
+            dialog.dismiss()
+        }
+
+        dialog.show()
+    }
+
+    // Create and show the import menu
+    private fun showImportDialog() {
+        val dialog = Dialog(this)
+        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
+        dialog.setContentView(R.layout.dialog_export_import)
+
+        // Make dialog background transparent to show rounded corners
+        dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+
+        val titleTextView = dialog.findViewById<TextView>(R.id.dialog_title)
+        val messageTextView = dialog.findViewById<TextView>(R.id.dialog_message)
+        val cancelButton = dialog.findViewById<Button>(R.id.btn_export_import_cancel)
+        val actionButton = dialog.findViewById<Button>(R.id.btn_export_import_action)
+
+        titleTextView.text = "Import Data"
+        messageTextView.text =
+            "Import galleries and barcodes from a JSON file.\n\n⚠️ This will replace all existing data!"
+        actionButton.text = "Import"
+
+        cancelButton.setOnClickListener {
+            dialog.dismiss()
+        }
+
+        actionButton.setOnClickListener {
+            importLauncher.launch(arrayOf("application/json", "*/*"))
+            dialog.dismiss()
         }
 
         dialog.show()
