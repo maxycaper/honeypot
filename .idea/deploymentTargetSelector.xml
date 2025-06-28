@@ -13,6 +13,7 @@
         </DropdownSelection>
         <DialogSelection />
       </SelectionState>
+<<<<<<< Updated upstream
       <SelectionState runConfigName="testScannerButtonIsDisplayed()">
         <option name="selectionMode" value="DROPDOWN" />
       </SelectionState>
@@ -33,6 +34,8 @@
       <SelectionState runConfigName="testNavigationDrawerIsAccessible()">
         <option name="selectionMode" value="DROPDOWN" />
       </SelectionState>
+=======
+>>>>>>> Stashed changes
     </selectionStates>
   </component>
 </project>
